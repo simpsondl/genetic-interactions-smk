@@ -35,7 +35,7 @@ rule calculate_discriminant_scores:
     output:
         output_discriminant_scores="../outputs/gi_scores/{screen}/discriminant_scores/discriminant_scores_{score}.tsv"
     log:
-        "../outputs/logs/{screen_score}_calculate_discriminant_scores.log"
+        "../outputs/logs/{screen}_{score}_calculate_discriminant_scores.log"
     params:
         score=lambda wildcards: wildcards.score,
         screen=lambda wildcards: wildcards.screen
