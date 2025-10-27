@@ -235,7 +235,7 @@ compute_gis <- function(query, singlepheno.df, pairpheno.df, phenocol){
   ### Merge single with interaction phenotypes
   tmp.data.merge <- merge(tmp.data, pairpheno.df[pairpheno.df$SecondPosition == query, 
                                                  c("ConstructID",  "GuideCombinationID", "Identical",
-                                                   "PseudogeneCombinationID",
+                                                   "FirstPseudogene", "SecondPseudogene", "PseudogeneCombinationID",
                                                    "Orientation", "GeneCombinationID", "Category",
                                                    "FirstPosition", phenocol)], 
                           by.x = "sgRNA.id", by.y = "FirstPosition", all.x = TRUE)
@@ -266,6 +266,7 @@ compute_gis <- function(query, singlepheno.df, pairpheno.df, phenocol){
     ### Order dataframe
     tmp.data.merge <- tmp.data.merge[order(tmp.data.merge$GI),c("ConstructID", "GuideCombinationID", 
                                                                 "PseudogeneCombinationID", "GeneCombinationID", 
+                                                                "FirstPseudogene", "SecondPseudogene",
                                                                 "Orientation", "Identical", "Category", "Control",
                                                                 "sgRNA.id", "query", "single", phenocol, "Expected",
                                                                 "GI", "GI.z")]

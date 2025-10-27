@@ -1,23 +1,33 @@
 def _expand_scores_for_screen(wc=None):
-    sc = config.get("screen") if isinstance(config, dict) else None
-    if sc is None:
-        raise Exception("Please provide the target screen via --config screen=<screen>")
-    return expand("../outputs/gi_scores/{screen}/individual_scores/{score}", 
-                  screen=sc, score=config[f"{sc.upper()}_GI_SCORES"])
+    screens = config.get("SCREENS")
+    if screens is None:
+        # fallback: infer from config keys
+        screens = [k.lower().split("_GI_SCORES")[0].lower() for k in config if k.endswith("_GI_SCORES")]
+    targets = []
+    for sc in screens:
+        targets += expand("../outputs/gi_scores/{screen}/individual_scores/{score}",
+                          screen=sc, score=config[f"{sc.upper()}_GI_SCORES"])
+    return targets
 
 def _expand_gene_level_score_targets(wc=None):
-    sc = config.get("screen") if isinstance(config, dict) else None
-    if sc is None:
-        raise Exception("Please provide the target screen via --config screen=<screen>")
-    return expand("../outputs/gi_scores/{screen}/gene_combination_scores/gene_combination_scores_{score}.tsv",
+    screens = config.get("SCREENS")
+    if screens is None:
+        screens = [k.lower().split("_GI_SCORES")[0].lower() for k in config if k.endswith("_GI_SCORES")]
+    targets = []
+    for sc in screens:
+        targets += expand("../outputs/gi_scores/{screen}/gene_combination_scores/gene_combination_scores_{score}.tsv",
                           screen=sc, score=config[f"{sc.upper()}_GI_SCORES"])
+    return targets
 
 def _expand_discriminant_score_targets(wc=None):
-    sc = config.get("screen") if isinstance(config, dict) else None
-    if sc is None:
-        raise Exception("Please provide the target screen via --config screen=<screen>")
-    return expand("../outputs/gi_scores/{screen}/discriminant_scores/discriminant_scores_{score}.tsv",
+    screens = config.get("SCREENS")
+    if screens is None:
+        screens = [k.lower().split("_GI_SCORES")[0].lower() for k in config if k.endswith("_GI_SCORES")]
+    targets = []
+    for sc in screens:
+        targets += expand("../outputs/gi_scores/{screen}/discriminant_scores/discriminant_scores_{score}.tsv",
                           screen=sc, score=config[f"{sc.upper()}_GI_SCORES"])
+    return targets
     
 def _all_screen_rep_targets(wc=None):
     screens = config.get("SCREENS")
@@ -81,7 +91,8 @@ rule calculate_differential_scores:
         input_idmap="data/annotations/{screen}_id_to_name_mapping.tsv"
     output:
         output_differential_scores="../outputs/gi_scores/{screen}/differential_scores/differential_scores_{rep}.tsv",
-        output_gene_differential_scores="../outputs/gi_scores/{screen}/differential_scores/gene_differential_scores_{rep}.tsv"
+        output_gene_differential_scores="../outputs/gi_scores/{screen}/differential_scores/gene_differential_scores_{rep}.tsv",
+        output_discriminant_differential_scores="../outputs/gi_scores/{screen}/differential_scores/discriminant_differential_scores_{rep}.tsv"
     script:
         "../scripts/calculate_differential_scores.R"
 
