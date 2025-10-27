@@ -1,3 +1,5 @@
+library(dplyr)
+
 ### Function for identifying individual sgRNAs which are poorly represented
 ### in either position A or position B at T0
 ### Inputs:
@@ -146,17 +148,16 @@ calculate_single_sgRNA_phenotypes <- function(phenos){
                                 phenos$SecondPosition %in% unique(phenos$FirstPosition[phenos$Category == "NT+NT"])) | 
                                (phenos$SecondPosition == single.pheno$sgRNA.ID[i] &
                                   phenos$FirstPosition %in% unique(phenos$FirstPosition[phenos$Category == "NT+NT"])),]
-      single.pheno$Gamma.OI.R1[i] <- mean(tmp$Gamma.OI.R1)
-      single.pheno$Gamma.OI.R2[i] <- mean(tmp$Gamma.OI.R2)
-      single.pheno$Gamma.OI.Avg[i] <- mean(tmp$Gamma.OI.Avg)
-      single.pheno$Tau.OI.R1[i] <- mean(tmp$Tau.OI.R1)
-      single.pheno$Tau.OI.R2[i] <- mean(tmp$Tau.OI.R2)
-      single.pheno$Tau.OI.Avg[i] <- mean(tmp$Tau.OI.Avg)
-      single.pheno$Rho.OI.R1[i] <- mean(tmp$Rho.OI.R1)
-      single.pheno$Rho.OI.R2[i] <- mean(tmp$Rho.OI.R2)
-      single.pheno$Rho.OI.Avg[i] <- mean(tmp$Rho.OI.Avg)
+      single.pheno$Gamma.OI.R1[i] <- mean(tmp$Gamma.R1)
+      single.pheno$Gamma.OI.R2[i] <- mean(tmp$Gamma.R2)
+      single.pheno$Gamma.OI.Avg[i] <- mean(tmp$Gamma.Avg)
+      single.pheno$Tau.OI.R1[i] <- mean(tmp$Tau.R1)
+      single.pheno$Tau.OI.R2[i] <- mean(tmp$Tau.R2)
+      single.pheno$Tau.OI.Avg[i] <- mean(tmp$Tau.Avg)
+      single.pheno$Rho.OI.R1[i] <- mean(tmp$Rho.R1)
+      single.pheno$Rho.OI.R2[i] <- mean(tmp$Rho.R2)
+      single.pheno$Rho.OI.Avg[i] <- mean(tmp$Rho.Avg)
       single.pheno$N[i] <- nrow(tmp)
-      
     }
     # Handle targeting case
     else {
@@ -165,15 +166,15 @@ calculate_single_sgRNA_phenotypes <- function(phenos){
       tmp <- phenos[(phenos$FirstPosition == single.pheno$sgRNA.ID[i] | phenos$SecondPosition == single.pheno$sgRNA.ID[i]) & 
                 (phenos$FirstPosition %in% unique(phenos$FirstPosition[phenos$Category == "NT+NT"]) | 
                    phenos$SecondPosition %in% unique(phenos$FirstPosition[phenos$Category == "NT+NT"])),]
-      single.pheno$Gamma.OI.R1[i] <- mean(tmp$Gamma.OI.R1)
-      single.pheno$Gamma.OI.R2[i] <- mean(tmp$Gamma.OI.R2)
-      single.pheno$Gamma.OI.Avg[i] <- mean(tmp$Gamma.OI.Avg)
-      single.pheno$Tau.OI.R1[i] <- mean(tmp$Tau.OI.R1)
-      single.pheno$Tau.OI.R2[i] <- mean(tmp$Tau.OI.R2)
-      single.pheno$Tau.OI.Avg[i] <- mean(tmp$Tau.OI.Avg)
-      single.pheno$Rho.OI.R1[i] <- mean(tmp$Rho.OI.R1)
-      single.pheno$Rho.OI.R2[i] <- mean(tmp$Rho.OI.R2)
-      single.pheno$Rho.OI.Avg[i] <- mean(tmp$Rho.OI.Avg)
+      single.pheno$Gamma.OI.R1[i] <- mean(tmp$Gamma.R1)
+      single.pheno$Gamma.OI.R2[i] <- mean(tmp$Gamma.R2)
+      single.pheno$Gamma.OI.Avg[i] <- mean(tmp$Gamma.Avg)
+      single.pheno$Tau.OI.R1[i] <- mean(tmp$Tau.R1)
+      single.pheno$Tau.OI.R2[i] <- mean(tmp$Tau.R2)
+      single.pheno$Tau.OI.Avg[i] <- mean(tmp$Tau.Avg)
+      single.pheno$Rho.OI.R1[i] <- mean(tmp$Rho.R1)
+      single.pheno$Rho.OI.R2[i] <- mean(tmp$Rho.R2)
+      single.pheno$Rho.OI.Avg[i] <- mean(tmp$Rho.Avg)
       single.pheno$N[i] <- nrow(tmp)
     }
   }
@@ -197,9 +198,9 @@ filt_nocorrelation <- function(combphenos, singlephenos, filterthresh = 0.25){
                      Tau.OI.Correlation = NA)
   
   for(i in singlephenos$sgRNA.ID){
-    tmp <- combphenos[combphenos$SecondPosition == i,c(colnames(combphenos)[1:9], 
+    tmp <- combphenos[combphenos$SecondPosition == i, c(colnames(combphenos)[1:9],
                                                       "Gamma.OI.Avg", "Tau.OI.Avg")]
-    tmp <- merge(tmp, singlephenos[,c("sgRNA.ID", "Gamma.OI.Avg", "Tau.OI.Avg")],
+    tmp <- merge(tmp, singlephenos[, c("sgRNA.ID", "Gamma.OI.Avg", "Tau.OI.Avg")],
                  by.x = "FirstPosition", by.y = "sgRNA.ID", suffix = c(".Comb", ".Single"))
     cors$Gamma.OI.Correlation[cors$sgRNA.ID == i] <- cor(tmp[,"Gamma.OI.Avg.Comb"], tmp[,"Gamma.OI.Avg.Single"])
     cors$Tau.OI.Correlation[cors$sgRNA.ID == i] <- cor(tmp[,"Tau.OI.Avg.Comb"], tmp[,"Tau.OI.Avg.Single"])
@@ -286,11 +287,11 @@ compute_gis <- function(query, singlepheno.df, pairpheno.df, phenocol){
 ### ### ### df with model coefficients
 ### ### ### df with model statistics
 create_interaction_result_df <- function(gis){
-  all.gis <- gis[[1]]
+  all_gis <- gis[[1]]
   ests <- data.frame(sgRNA.ID = i, tidy(gis[[3]]))
   stats <- data.frame(sgRNA.ID = i,glance(gis[[3]]))
   
-  return(list(all.gis, ests, stats))
+  return(list(all_gis, ests, stats))
 }
 
 ### Function for cleanly saving results from compute_gis - used after create_interaction_result_df
@@ -302,11 +303,11 @@ create_interaction_result_df <- function(gis){
 ### ### ### df with model coefficients
 ### ### ### df with model statistics
 update_interaction_result_df <- function(gis, prev){
-  all.gis <- rbind(prev[[1]], gis[[1]])
+  all_gis <- rbind(prev[[1]], gis[[1]])
   ests <- rbind(prev[[2]], data.frame(sgRNA.ID = i,tidy(gis[[3]])))
   stats <- rbind(prev[[3]], data.frame(sgRNA.ID = i,glance(gis[[3]])))
   
-  return(list(all.gis, ests, stats))
+  return(list(all_gis, ests, stats))
 }
 
 ### Function for aggregating the results from compute_gis across constructs
@@ -316,8 +317,8 @@ update_interaction_result_df <- function(gis, prev){
 ### ### df containing GI scores averaged across sgRNA IDs
 compute_sgc_interaction_scores <- function(gis){
   info.cols <- c("GuideCombinationID", "GeneCombinationID", "Category", "Control", "GI.z")
-  orient <- gis[,colnames(gis) %in% info.cols] %>% 
-              group_by(GuideCombinationID) %>% 
+  orient <- gis[, colnames(gis) %in% info.cols] %>%
+              group_by(GuideCombinationID) %>%
               mutate(InteractionScore = mean(GI.z), N = n()) %>%
               select(-GI.z) %>% unique()
   return(orient)

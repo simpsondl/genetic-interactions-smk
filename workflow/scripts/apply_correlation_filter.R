@@ -8,12 +8,9 @@ orind_phenotypes <- read_tsv(snakemake@input[["input_orientation_indep_phenotype
 single_phenotypes <- read_tsv(snakemake@input[["input_single_sgRNA_phenotypes"]])
 to_filt <- read_tsv(snakemake@input[["input_filter_flags"]])
 
-
-phenos_to_filter <- snakemake@params[["correlation_phenotypes"]]
-
-raw_phenotypes <- left_join(raw_phenotypes, 
-                            orind_phenotypes[,c("GuideCombinationID",phenos_to_filter)], 
-                            by="GuideCombinationID")
+raw_phenotypes <- left_join(raw_phenotypes,
+                            orind_phenotypes[, c("GuideCombinationID", "Gamma.OI.Avg", "Tau.OI.Avg")],
+                            by = "GuideCombinationID")
 
 # Identify single sgRNAs whose combinatorial and single phenotypes do not correlate
 # Returns a list with four elements, first is a dataframe of all calculated correlations,
