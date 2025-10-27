@@ -14,6 +14,10 @@ score <- snakemake@params[["score"]]
 out_dir <- snakemake@output[["out_dir"]]
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
+# compiled results directory for this screen (one level up from the per-score dir)
+compiled_dir <- file.path(dirname(out_dir), "../all_scores")
+dir.create(compiled_dir, recursive = TRUE, showWarnings = FALSE)
+
 # Pre-allocate lists to collect results for this score
 n <- length(single_phenotypes$sgRNA.ID)
 all_gis_list <- vector("list", n)
@@ -58,6 +62,6 @@ combined_all <- bind_rows(all_gis_list)
 combined_ests <- bind_rows(ests_list)
 combined_stats <- bind_rows(stats_list)
 
-write_tsv(combined_all, file.path(out_dir, paste0("_all_gis_", score, ".tsv")))
-write_tsv(combined_ests, file.path(out_dir, paste0("_model_estimates_", score, ".tsv")))
-write_tsv(combined_stats, file.path(out_dir, paste0("_model_stats_", score, ".tsv")))
+write_tsv(combined_all, file.path(compiled_dir, paste0("all_gis_", score, ".tsv")))
+write_tsv(combined_ests, file.path(compiled_dir, paste0("model_estimates_", score, ".tsv")))
+write_tsv(combined_stats, file.path(compiled_dir, paste0("model_stats_", score, ".tsv")))

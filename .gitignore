@@ -1,2 +1,4 @@
 .*
+outputs/gi_scores/screen2022/individual_scores/
+outputs/gi_scores/screen2023/individual_scores/
 !/.gitignore
