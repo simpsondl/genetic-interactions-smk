@@ -29,7 +29,7 @@ def _expand_discriminant_score_targets(wc=None):
                           screen=sc, score=config[f"{sc.upper()}_GI_SCORES"])
     return targets
     
-def _all_screen_rep_targets(wc=None):
+def _expand_differential_score_targets(wc=None):
     screens = config.get("SCREENS")
     if screens is None:
         # same fallback as above
@@ -111,6 +111,6 @@ rule compute_all_discriminant_scores:
 
 rule compute_all_differential_scores:
     input:
-        lambda wildcards: _all_screen_rep_targets(wildcards)
+        lambda wildcards: _expand_differential_score_targets(wildcards)
 
 #rule call_hits:
