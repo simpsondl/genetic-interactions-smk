@@ -1,27 +1,29 @@
 library(readr)
 library(dplyr)
+library(tidyr)
+library(broom)
 
 source("scripts/helper_functions.R")
 
 orientation_indep_phenotypes <- read_tsv(snakemake@input[["input_orientation_indep_phenotypes"]])
-single_sgRNA_phenotypes <- read_tsv(snakemake@input[["input_single_sgRNA_phenotypes"]])
+single_phenotypes <- read_tsv(snakemake@input[["input_single_sgRNA_phenotypes"]])
 
 scores <- snakemake@params[["scores"]]
 
 # Initialize empty lists to store results
-all_gis_list <- vector("list", length(single.pheno.filt$sgRNA.ID))
-ests_list <- vector("list", length(single.pheno.filt$sgRNA.ID))
-stats_list <- vector("list", length(single.pheno.filt$sgRNA.ID))
+all_gis_list <- vector("list", length(single_phenotypes$sgRNA.ID))
+ests_list <- vector("list", length(single_phenotypes$sgRNA.ID))
+stats_list <- vector("list", length(single_phenotypes$sgRNA.ID))
 
-for(idx in seq_along(single.pheno.filt$sgRNA.ID)) {
-    i <- single.pheno.filt$sgRNA.ID[idx]
+for (idx in seq_along(single_phenotypes$sgRNA.ID)) {
+    i <- single_phenotypes$sgRNA.ID[idx]
     
     # Log progress every 100 sgRNAs
-    if(idx %% 100 == 0){
+    if (idx %% 100 == 0) {
         print(idx)
     }
 
-    gi_scores <- compute_gis(i, single.pheno.filt, phenos.filt, "Gamma.R1")
+    gi_scores <- compute_gis(i, single_phenotypes, phenos.filt, "Gamma.R1")
     
     # Store results in lists
     all_gis_list[[idx]] <- gi_scores[[1]]
@@ -37,4 +39,3 @@ res <- list(
     bind_rows(all_gis_list),
     bind_rows(ests_list),
     bind_rows(stats_list))
-
