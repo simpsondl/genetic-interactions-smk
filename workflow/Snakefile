@@ -8,4 +8,5 @@ configfile: "../config/config.yaml"
 
 
 include: "rules/preprocess.smk"
+include: "rules/calculate_genetic_interaction_scores.smk"
 

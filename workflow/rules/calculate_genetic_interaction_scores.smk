@@ -1,10 +1,26 @@
+def _expand_scores_for_screen(wc=None):
+    sc = config.get("screen") if isinstance(config, dict) else None
+    if sc is None:
+        raise Exception("Please provide the target screen via --config screen=<screen>")
+    return expand("../outputs/gi_scores/{screen}/{score}", screen=sc, score=config[f"{sc.upper()}_GI_SCORES"])
+
+
 rule compute_genetic_interaction_scores:
     input:
         input_orientation_indep_phenotypes="../outputs/phenotypes/{screen}_filtered_phenotypes.tsv",
         input_single_sgRNA_phenotypes="../outputs/phenotypes/{screen}_filtered_single_sgRNA_phenotypes.tsv"
+    # Use a separate job per score (avoid using functions in outputs). Snakemake will create
+    # one job for each score by expanding the {score} wildcard elsewhere in the workflow.
     output:
-        output_gis="../outputs/gis/{screen}_genetic_interaction_scores.tsv"
+        out_dir=directory("../outputs/gi_scores/{screen}/{score}")
     params:
-        scores=lambda wildcards: config[f"{wildcards.screen.upper()}_GI_SCORES"]
+        # the single score for this job
+        score=lambda wildcards: wildcards.score,
     script:
         "../scripts/calculate_gi_scores.R"
+
+
+rule compute_all_genetic_interaction_scores:
+    # wrapper rule to build all scores for a given screen; call with --config screen=<screen>
+    input:
+        lambda wildcards: _expand_scores_for_screen(wildcards)

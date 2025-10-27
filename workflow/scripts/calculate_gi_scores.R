@@ -1,6 +1,5 @@
 library(readr)
 library(dplyr)
-library(tidyr)
 library(broom)
 
 source("scripts/helper_functions.R")
@@ -8,34 +7,57 @@ source("scripts/helper_functions.R")
 orientation_indep_phenotypes <- read_tsv(snakemake@input[["input_orientation_indep_phenotypes"]])
 single_phenotypes <- read_tsv(snakemake@input[["input_single_sgRNA_phenotypes"]])
 
-scores <- snakemake@params[["scores"]]
+# single score for this Snakemake job
+score <- snakemake@params[["score"]]
 
-# Initialize empty lists to store results
-all_gis_list <- vector("list", length(single_phenotypes$sgRNA.ID))
-ests_list <- vector("list", length(single_phenotypes$sgRNA.ID))
-stats_list <- vector("list", length(single_phenotypes$sgRNA.ID))
+# output directory for this score
+out_dir <- snakemake@output[["out_dir"]]
+dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+
+# Pre-allocate lists to collect results for this score
+n <- length(single_phenotypes$sgRNA.ID)
+all_gis_list <- vector("list", n)
+ests_list <- vector("list", n)
+stats_list <- vector("list", n)
 
 for (idx in seq_along(single_phenotypes$sgRNA.ID)) {
     i <- single_phenotypes$sgRNA.ID[idx]
-    
+
     # Log progress every 100 sgRNAs
     if (idx %% 100 == 0) {
-        print(idx)
+        message(sprintf("[%s] processing sgRNA %d/%d (id=%s)", score, idx, n, i))
     }
 
-    gi_scores <- compute_gis(i, single_phenotypes, phenos.filt, "Gamma.R1")
-    
-    # Store results in lists
+    gi_scores <- compute_gis(i, single_phenotypes, orientation_indep_phenotypes, score)
+
+    # Handle cases where compute_gis returns NA (no data)
+    if (length(gi_scores) == 1 && is.na(gi_scores)) {
+        all_gis_list[[idx]] <- tibble()
+        ests_list[[idx]] <- tibble()
+        stats_list[[idx]] <- tibble()
+        next
+    }
+
+    # Safe extraction of model objects
+    model_obj <- gi_scores[[3]]
     all_gis_list[[idx]] <- gi_scores[[1]]
-    ests_list[[idx]] <- data.frame(sgRNA.ID = i, tidy(gi_scores[[3]]))
-    stats_list[[idx]] <- data.frame(sgRNA.ID = i, glance(gi_scores[[3]]))
-    
-    # Write individual results tables
-    write_tsv(gi_scores[[1]], paste("Interaction_Scores/Gamma.R1/", i, ".txt", sep = ""))
+    if (!is.null(model_obj)) {
+        ests_list[[idx]] <- data.frame(sgRNA.ID = i, tidy(model_obj))
+        stats_list[[idx]] <- data.frame(sgRNA.ID = i, glance(model_obj))
+    } else {
+        ests_list[[idx]] <- tibble()
+        stats_list[[idx]] <- tibble()
+    }
+
+    # Write individual results tables for this score
+    write_tsv(all_gis_list[[idx]], file.path(out_dir, paste0(i, ".txt")))
 }
 
-# Combine all results at once
-res <- list(
-    bind_rows(all_gis_list),
-    bind_rows(ests_list),
-    bind_rows(stats_list))
+# Combine and write out aggregated tables for this score
+combined_all <- bind_rows(all_gis_list)
+combined_ests <- bind_rows(ests_list)
+combined_stats <- bind_rows(stats_list)
+
+write_tsv(combined_all, file.path(out_dir, paste0("_all_gis_", score, ".tsv")))
+write_tsv(combined_ests, file.path(out_dir, paste0("_model_estimates_", score, ".tsv")))
+write_tsv(combined_stats, file.path(out_dir, paste0("_model_stats_", score, ".tsv")))

@@ -21,5 +21,5 @@ SCREEN2023_DOUBLINGS: [8.04, 7.98, 5.40, 4.98]
 NO_CORRELATION_THRESHOLD: 0.25
 
 ### Genetic interaction score calculation parameters
-SCREEN2022_GI_SCORES: ["Gamma.OI.R1", "Gamma.OI.R2", "Gamma.OI.Avg", "Tau.OI.R1", "Tau.OI.R2", "Tau.OI.Avg"]
+SCREEN2022_GI_SCORES: ["Gamma.OI.R1"]
 SCREEN2023_GI_SCORES: ["Gamma.OI.R1", "Gamma.OI.R2", "Gamma.OI.Avg", "Tau.OI.R1", "Tau.OI.R2", "Tau.OI.Avg"]

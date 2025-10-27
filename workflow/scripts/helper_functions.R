@@ -1,5 +1,4 @@
 library(dplyr)
-library(tidyr)
 library(broom)
 
 ### Function for identifying individual sgRNAs which are poorly represented
@@ -74,7 +73,7 @@ calculate_phenotypes <- function(counts, conds, pseudocount = 10, normalize = TR
                        Tau.R2 = log2(fracs$NIRAP.R2/fracs$T0.R2),
                        Rho.R1 = log2(fracs$NIRAP.R1/fracs$DMSO.R1),
                        Rho.R2 = log2(fracs$NIRAP.R2/fracs$DMSO.R2))
-  phenos <- cbind(counts[,1:11], phenos)
+  phenos <- cbind(counts[,1:13], phenos)
   
   if(normalize){
     nt.gamma.r1 <- median(phenos$Gamma.R1[phenos$Category == "NT+NT"])
@@ -95,8 +94,8 @@ calculate_phenotypes <- function(counts, conds, pseudocount = 10, normalize = TR
   phenos$Gamma.Avg <- rowMeans(phenos[,c("Gamma.R1", "Gamma.R2")])
   phenos$Tau.Avg <- rowMeans(phenos[,c("Tau.R1", "Tau.R2")])
   phenos$Rho.Avg <- rowMeans(phenos[,c("Rho.R1", "Rho.R2")])
-
-  return(phenos[,c(1:13,18,14,15,19,16,17,20)])
+  # rearranges dataframe to have averages next to individual replicates
+  return(phenos[,c(1:15,20,16,17,21,18,19,22)])
 }
 
 ### Function for calculating orientation independent, averaged sgRNA combination phenotypes
@@ -238,11 +237,11 @@ compute_gis <- function(query, singlepheno.df, pairpheno.df, phenocol){
                                                  c("ConstructID",  "GuideCombinationID", "Identical",
                                                    "PseudogeneCombinationID",
                                                    "Orientation", "GeneCombinationID", "Category",
-                                                   "FirstPosition",phenocol)], 
+                                                   "FirstPosition", phenocol)], 
                           by.x = "sgRNA.id", by.y = "FirstPosition", all.x = TRUE)
   
   ### Identify control combinations
-  tmp.data.merge$Control <- grepl("non-targeting",tmp.data.merge$sgRNA.id)
+  tmp.data.merge$Control <- grepl("non-targeting", tmp.data.merge$sgRNA.id)
   
   ### Remove any missing information
   tmp.data.merge <- tmp.data.merge[!is.na(tmp.data.merge[,phenocol]),]
@@ -255,7 +254,7 @@ compute_gis <- function(query, singlepheno.df, pairpheno.df, phenocol){
     lm.fit <- lm(as.formula(paste0(phenocol," ~ single + I(single^2)")), data = tmp.data.merge)
     
     ### Generate points for plotting the fit
-    single.pred <- seq(-.35, .05,.01)
+    single.pred <- seq(-.35, .05, .01)
     pair.pred <- predict(lm.fit, list(single = single.pred))
     
     ### Define interaction score as observed - expected
@@ -273,9 +272,9 @@ compute_gis <- function(query, singlepheno.df, pairpheno.df, phenocol){
     
     ### Want to label strongest 10 interactions [both buffering and synthetic lethal]
     n <- nrow(tmp.data.merge)
-    tmp.data.merge$lb <- c(gsub("_.*","",tmp.data.merge$sgRNA.id[1:(10)]),
-                           rep("",n-20),
-                           gsub("_.*","",tmp.data.merge$sgRNA.id[(n-9):n]))
+    tmp.data.merge$lb <- c(gsub("_.*", "", tmp.data.merge$sgRNA.id[1:(10)]),
+                           rep("", n-20),
+                           gsub("_.*", "", tmp.data.merge$sgRNA.id[(n - 9):n]))
     
   }, silent = TRUE)
   
