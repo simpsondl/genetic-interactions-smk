@@ -3,6 +3,20 @@ library(dplyr)
 
 source("scripts/helper_functions.R")
 
+# If Snakemake provided a log file for this job, redirect stdout and messages there
+if (exists("snakemake") && !is.null(snakemake@log) && length(snakemake@log) > 0) {
+  log_file <- snakemake@log[[1]]
+  log_con <- file(log_file, open = "wt")
+  sink(log_con, type = "output")
+  sink(log_con, type = "message")
+  options(warn = 1)
+  on.exit({
+    sink(type = "message")
+    sink(type = "output")
+    close(log_con)
+  }, add = TRUE)
+}
+
 raw_phenotypes <- read_tsv(snakemake@input[["input_phenotypes"]])
 orind_phenotypes <- read_tsv(snakemake@input[["input_orientation_indep_phenotypes"]])
 single_phenotypes <- read_tsv(snakemake@input[["input_single_sgRNA_phenotypes"]])

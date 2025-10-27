@@ -3,6 +3,20 @@ library(dplyr)
 
 source("scripts/helper_functions.R")
 
+# Redirect R output/messages to Snakemake log if provided
+if (exists("snakemake") && !is.null(snakemake@log) && length(snakemake@log) > 0) {
+    log_file <- snakemake@log[[1]]
+    log_con <- file(log_file, open = "wt")
+    sink(log_con, type = "output")
+    sink(log_con, type = "message")
+    options(warn = 1)
+    on.exit({
+        sink(type = "message")
+        sink(type = "output")
+        close(log_con)
+    }, add = TRUE)
+}
+
 gamma <- read_tsv(snakemake@input[["input_gamma_gi_scores"]])
 tau <- read_tsv(snakemake@input[["input_tau_gi_scores"]])
 idmap <- read_tsv(snakemake@input[["input_idmap"]])
