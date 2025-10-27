@@ -320,11 +320,11 @@ update_interaction_result_df <- function(gis, prev){
 ### Outputs:
 ### ### df containing gene-level GI scores
 compute_gene_interaction_scores <- function(gis, scorecol){
-  info.cols <- c("GuideCombinationID", "GeneCombinationID", "Category", "Control", scorecol)
+  info.cols <- c("GuideCombinationID", "PseudogeneCombinationID", "Category", "Control", scorecol)
   gene.gis <- gis[,colnames(gis) %in% info.cols] %>% 
-                group_by(GeneCombinationID) %>% 
+                group_by(PseudogeneCombinationID) %>% 
                 mutate(InteractionScore = mean(!!sym(scorecol)), N = n()) %>%
-                select(c(GeneCombinationID, Category, InteractionScore, N)) %>% unique()
+                select(c(PseudogeneCombinationID, Category, InteractionScore, N)) %>% unique()
   return(gene.gis)
 }
 
