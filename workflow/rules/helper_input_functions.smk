@@ -1,0 +1,44 @@
+def _expand_scores_for_screen(wc=None):
+    screens = config.get("SCREENS")
+    if screens is None:
+        # fallback: infer from config keys
+        screens = [k.lower().split("_GI_SCORES")[0].lower() for k in config if k.endswith("_GI_SCORES")]
+    targets = []
+    for sc in screens:
+        targets += expand("../outputs/gi_scores/{screen}/individual_scores/{score}",
+                          screen=sc, score=config[f"{sc.upper()}_GI_SCORES"])
+    return targets
+
+def _expand_gene_level_score_targets(wc=None):
+    screens = config.get("SCREENS")
+    if screens is None:
+        screens = [k.lower().split("_GI_SCORES")[0].lower() for k in config if k.endswith("_GI_SCORES")]
+    targets = []
+    for sc in screens:
+        targets += expand("../outputs/gi_scores/{screen}/gene_combination_scores/gene_combination_scores_{score}.tsv",
+                          screen=sc, score=config[f"{sc.upper()}_GI_SCORES"])
+    return targets
+
+def _expand_discriminant_score_targets(wc=None):
+    screens = config.get("SCREENS")
+    if screens is None:
+        screens = [k.lower().split("_GI_SCORES")[0].lower() for k in config if k.endswith("_GI_SCORES")]
+    targets = []
+    for sc in screens:
+        targets += expand("../outputs/gi_scores/{screen}/discriminant_scores/discriminant_scores_{score}.tsv",
+                          screen=sc, score=config[f"{sc.upper()}_GI_SCORES"])
+    return targets
+    
+def _expand_differential_score_targets(wc=None):
+    screens = config.get("SCREENS")
+    if screens is None:
+        # same fallback as above
+        screens = [k.lower().split("_GI_SCORES")[0].lower() for k in config if k.endswith("_GI_SCORES")]
+    reps = config.get("DIFFERENTIAL_SCORES")
+    if reps is None:
+        raise Exception("Please add a DIFFERENTIAL_SCORES list to config.yaml, e.g. DIFFERENTIAL_SCORES: [OI.R1, OI.R2]")
+    targets = []
+    for sc in screens:
+        targets += expand("../outputs/gi_scores/{screen}/differential_scores/differential_scores_{rep}.tsv",
+                          screen=sc, rep=reps)
+    return targets
