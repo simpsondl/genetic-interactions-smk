@@ -1,4 +1,6 @@
 library(dplyr)
+library(tidyr)
+library(broom)
 
 ### Function for identifying individual sgRNAs which are poorly represented
 ### in either position A or position B at T0
@@ -195,19 +197,21 @@ calculate_single_sgRNA_phenotypes <- function(phenos){
 filt_nocorrelation <- function(combphenos, singlephenos, filterthresh = 0.25){
   cors <- data.frame(sgRNA.ID = singlephenos$sgRNA.ID,
                      Gamma.OI.Correlation = NA,
-                     Tau.OI.Correlation = NA)
+                     Tau.OI.Correlation = NA,
+                     Rho.OI.Correlation = NA)
   
   for(i in singlephenos$sgRNA.ID){
     tmp <- combphenos[combphenos$SecondPosition == i, c(colnames(combphenos)[1:9],
-                                                      "Gamma.OI.Avg", "Tau.OI.Avg")]
-    tmp <- merge(tmp, singlephenos[, c("sgRNA.ID", "Gamma.OI.Avg", "Tau.OI.Avg")],
+                                                      "Gamma.OI.Avg", "Tau.OI.Avg", "Rho.OI.Avg")]
+    tmp <- merge(tmp, singlephenos[, c("sgRNA.ID", "Gamma.OI.Avg", "Tau.OI.Avg", "Rho.OI.Avg")],
                  by.x = "FirstPosition", by.y = "sgRNA.ID", suffix = c(".Comb", ".Single"))
-    cors$Gamma.OI.Correlation[cors$sgRNA.ID == i] <- cor(tmp[,"Gamma.OI.Avg.Comb"], tmp[,"Gamma.OI.Avg.Single"])
-    cors$Tau.OI.Correlation[cors$sgRNA.ID == i] <- cor(tmp[,"Tau.OI.Avg.Comb"], tmp[,"Tau.OI.Avg.Single"])
+    cors$Gamma.OI.Correlation[cors$sgRNA.ID == i] <- cor(tmp[, "Gamma.OI.Avg.Comb"], tmp[, "Gamma.OI.Avg.Single"])
+    cors$Tau.OI.Correlation[cors$sgRNA.ID == i] <- cor(tmp[, "Tau.OI.Avg.Comb"], tmp[, "Tau.OI.Avg.Single"])
+    cors$Rho.OI.Correlation[cors$sgRNA.ID == i] <- cor(tmp[, "Rho.OI.Avg.Comb"], tmp[, "Rho.OI.Avg.Single"])
   }
   
-  return(list(cors, 
-              cors$sgRNA.ID[cors$Gamma.OI.Correlation < filterthresh], 
+  return(list(cors,
+              cors$sgRNA.ID[cors$Gamma.OI.Correlation < filterthresh],
               cors$sgRNA.ID[cors$Tau.OI.Correlation < filterthresh],
               cors$sgRNA.ID[cors$Rho.OI.Correlation < filterthresh]))
 }
