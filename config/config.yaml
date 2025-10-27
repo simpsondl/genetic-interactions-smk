@@ -1,0 +1,25 @@
+###############################################################################
+###############################################################################
+
+# Adjustable parameters
+
+### Count filter thresholds
+INDIVIDUAL_SGRNA_MEDIAN_THRESHOLD: 35
+COMBINATION_SGRNA_COUNT_THRESHOLD: 50
+
+### Counts column positions in counts files
+SCREEN2022_COUNTS_COLUMNS: [14, 15, 16, 17, 18, 19]
+SCREEN2023_COUNTS_COLUMNS: [14, 15, 16, 17, 18, 19]
+
+### Phenotype calculation parameters
+PSEUDOCOUNT: 10
+NORMALIZE: TRUE
+SCREEN2022_DOUBLINGS: [7.19, 7.73, 5.32, 5.36]
+SCREEN2023_DOUBLINGS: [8.04, 7.98, 5.40, 4.98]
+
+### Correlation filter parameters
+NO_CORRELATION_THRESHOLD: 0.25
+
+### Genetic interaction score calculation parameters
+SCREEN2022_GI_SCORES: ["Gamma.OI.R1", "Gamma.OI.R2", "Gamma.OI.Avg", "Tau.OI.R1", "Tau.OI.R2", "Tau.OI.Avg"]
+SCREEN2023_GI_SCORES: ["Gamma.OI.R1", "Gamma.OI.R2", "Gamma.OI.Avg", "Tau.OI.R1", "Tau.OI.R2", "Tau.OI.Avg"]
