@@ -316,20 +316,6 @@ update_interaction_result_df <- function(gis, prev){
 ### Function for aggregating the results from compute_gis across constructs
 ### Inputs:
 ### ### gis - final full output from update_interaction_result_df
-### Outputs:
-### ### df containing GI scores averaged across sgRNA IDs
-compute_sgc_interaction_scores <- function(gis){
-  info.cols <- c("GuideCombinationID", "GeneCombinationID", "Category", "Control", "GI.z")
-  orient <- gis[, colnames(gis) %in% info.cols] %>%
-              group_by(GuideCombinationID) %>%
-              mutate(InteractionScore = mean(GI.z), N = n()) %>%
-              select(-GI.z) %>% unique()
-  return(orient)
-}
-
-### Function for aggregating the results from compute_gis across constructs
-### Inputs:
-### ### gis - final full output from update_interaction_result_df
 ### ### scorecol - column name that contains the interaction scores to be aggregated to gene level
 ### Outputs:
 ### ### df containing gene-level GI scores
@@ -340,4 +326,70 @@ compute_gene_interaction_scores <- function(gis, scorecol){
                 mutate(InteractionScore = mean(!!sym(scorecol)), N = n()) %>%
                 select(c(GeneCombinationID, Category, InteractionScore, N)) %>% unique()
   return(gene.gis)
+}
+
+### Function for assessing the variance of sgRNA-level GI scores that contribute to gene-level GI scores
+### Inputs:
+### ### congis - final full output from update_interaction_result_df
+### ### genegis - output from compute_gene_interaction_scores, must have columns Gene1 and Gene2 included
+### Outputs:
+### ### df containing GI scores averaged across sgRNA IDs
+assess_sgcscore_variance <- function(congis, genegis){
+  
+  genegis$Variance.p <- NA
+  genegis$Variance.N.NT <- NA
+  genegis$Variance.N.Test <- NA
+  k <- 1
+  for(i in unique(genegis$PseudogeneCombinationID)){
+    
+    if(k %% 10000 == 0){
+      print(k)
+    }
+    
+    gene1 <- genegis$Pseudogene1[genegis$PseudogeneCombinationID == i]
+    gene2 <- genegis$Pseudogene2[genegis$PseudogeneCombinationID == i]
+  
+    tmp <- congis[congis$SecondPseudogene == gene1 | congis$SecondPseudogene == gene2,]
+    
+    if(grepl("NTPG", gene1) & grepl("NTPG", gene2)) {
+      tmp <- tmp[tmp$PseudogeneCombinationID == i | 
+                    (tmp$Category == "NT+NT" & tmp$SecondPseudogene == gene1) |
+                    (tmp$Category == "NT+NT" & tmp$SecondPseudogene == gene2),]
+    } else if(grepl("NTPG", gene1)){
+      tmp <- tmp[tmp$PseudogeneCombinationID == i | 
+                    (tmp$Category == "NT+NT" & tmp$SecondPseudogene == gene1) |
+                    (tmp$Category == "X+NT" & tmp$SecondPseudogene == gene2),]
+    } else if(grepl("NTPG", gene2)) {
+      tmp <- tmp[tmp$PseudogeneCombinationID == i | 
+                    (tmp$Category == "NT+NT" & tmp$SecondPseudogene == gene2) |
+                    (tmp$Category == "X+NT" & tmp$SecondPseudogene == gene1),]
+    } else {
+      tmp <- tmp[tmp$PseudogeneCombinationID == i | tmp$Category == "X+NT",]
+    }
+    
+    tmp$TestDist <- tmp$PseudogeneCombinationID == i
+    tmp <- tmp[!tmp$Identical,]
+
+    if(length(unique(tmp$TestDist)) == 1){
+      next
+    }
+    
+    genegis$Variance.p[genegis$PseudogeneCombinationID == i] <- wilcox.test(GI.z ~ TestDist, data = tmp)$p.value
+    genegis$Variance.N.NT[genegis$PseudogeneCombinationID == i] <- sum(!tmp$TestDist)
+    genegis$Variance.N.Test[genegis$PseudogeneCombinationID == i] <- sum(tmp$TestDist)
+    
+    k <- k+1
+  }
+  
+  return(genegis)
+}
+
+compute_construct_differential_scores <- function(gamma, tau){
+  info_cols <- c(colnames(gamma)[1:14], "GI.z") #meta info columns + GI scores
+  pm <- inner_join(gamma[,colnames(gamma) %in% info_cols], 
+                   tau[,colnames(tau) %in% info_cols],
+                   by = info_cols[1:14],
+                   suffix = c(".Gamma", ".Tau"))
+  pm$GI.z <- pm$GI.z.Tau - pm$GI.z.Gamma
+  return(pm)
 }
