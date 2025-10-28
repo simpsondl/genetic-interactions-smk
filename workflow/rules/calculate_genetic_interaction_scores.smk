@@ -76,4 +76,30 @@ rule compute_all_differential_scores:
     input:
         lambda wildcards: _expand_differential_score_targets(wildcards)
 
-#rule call_hits:
+rule call_hits:
+    input:
+        input_scores="../outputs/gi_scores/{screen}/discriminant_scores/discriminant_scores_{score}.tsv"
+    output:
+        output_hits="../outputs/gi_scores/{screen}/discriminant_scores/discriminant_hits_{score}.tsv"
+    log:
+        "../outputs/logs/{screen}_{score}_call_hits.log"
+    params:
+        score=lambda wildcards: wildcards.score,
+        screen=lambda wildcards: wildcards.screen,
+        threshold=config["HIT_THRESHOLD"]
+    script:
+        "../scripts/call_hits.R"
+
+rule call_differential_hits:
+    input:
+        input_scores="../outputs/gi_scores/{screen}/differential_scores/discriminant_differential_scores_{rep}.tsv"
+    output:
+        output_hits="../outputs/gi_scores/{screen}/differential_scores/differential_hits_{rep}.tsv"
+    log:
+        "../outputs/logs/{screen}_{rep}_call_differential_hits.log"
+    params:
+        rep=lambda wildcards: wildcards.rep,
+        screen=lambda wildcards: wildcards.screen,
+        threshold=config["DIFFERENTIAL_HIT_THRESHOLD"]
+    script:
+        "../scripts/call_differential_hits.R"
