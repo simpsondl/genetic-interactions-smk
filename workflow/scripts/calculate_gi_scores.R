@@ -28,6 +28,12 @@ score <- snakemake@params[["score"]]
 out_dir <- snakemake@output[["output_dir"]]
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
+message(sprintf("[%s] calculate_gi_scores.R starting; score=%s", Sys.time(), score))
+message(sprintf("[%s] Inputs: orientation_indep=%s (%d rows), single_phenotypes=%s (%d rows)",
+                Sys.time(), snakemake@input[["input_orientation_indep_phenotypes"]], nrow(orientation_indep_phenotypes),
+                snakemake@input[["input_single_sgRNA_phenotypes"]], nrow(single_phenotypes)))
+message(sprintf("[%s] Writing individual per-sgRNA files into: %s", Sys.time(), out_dir))
+
 # Pre-allocate lists to collect results for this score
 n <- length(single_phenotypes$sgRNA.ID)
 all_gis_list <- vector("list", n)
@@ -72,6 +78,14 @@ combined_all <- bind_rows(all_gis_list)
 combined_ests <- bind_rows(ests_list)
 combined_stats <- bind_rows(stats_list)
 
+message(sprintf("[%s] Combined results: constructs=%d, model_est_rows=%d, model_stat_rows=%d", Sys.time(),
+                                nrow(combined_all), nrow(combined_ests), nrow(combined_stats)))
+
+message(sprintf("[%s] Writing combined_all to %s", Sys.time(), snakemake@output[["output_all_scores"]]))
 write_tsv(combined_all, snakemake@output[["output_all_scores"]])
+message(sprintf("[%s] Writing combined model estimates to %s", 
+                Sys.time(), snakemake@output[["output_model_estimates"]]))
 write_tsv(combined_ests, snakemake@output[["output_model_estimates"]])
+message(sprintf("[%s] Writing combined model stats to %s", 
+                Sys.time(), snakemake@output[["output_model_stats"]]))
 write_tsv(combined_stats, snakemake@output[["output_model_stats"]])

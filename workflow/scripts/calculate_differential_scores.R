@@ -26,9 +26,10 @@ message(sprintf("[%s] Inputs: gamma=%s (%d rows), tau=%s (%d rows), idmap=%s (%d
                 snakemake@input[["input_tau_gi_scores"]], nrow(tau),
                 snakemake@input[["input_idmap"]], nrow(idmap)))
 
-message(sprintf("[%s] Computing construct-level differential scores (compute_construct_differential_scores)", Sys.time()))
-nu <- compute_construct_differential_scores(gamma, tau)
-message(sprintf("[%s] compute_construct_differential_scores returned %d rows", Sys.time(), nrow(nu)))
+message(sprintf("[%s] Computing construct-level differential scores (compute_construct_diff_scores)", 
+                Sys.time()))
+nu <- compute_construct_diff_scores(gamma, tau)
+message(sprintf("[%s] compute_construct_diff_scores returned %d rows", Sys.time(), nrow(nu)))
 
 message(sprintf("[%s] Aggregating to gene-level scores (compute_gene_interaction_scores)", Sys.time()))
 nu_genes <- compute_gene_interaction_scores(nu, "GI.z")

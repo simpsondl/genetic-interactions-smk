@@ -340,11 +340,14 @@ assess_sgcscore_variance <- function(congis, genegis){
   genegis$Variance.p <- NA
   genegis$Variance.N.NT <- NA
   genegis$Variance.N.Test <- NA
+  ids <- unique(genegis$PseudogeneCombinationID)
+  total_ids <- length(ids)
   k <- 1
-  for(i in unique(genegis$PseudogeneCombinationID)){
+  for (i in ids){
     
-    if(k %% 10000 == 0){
-      print(k)
+    if(k %% 5000 == 0){
+      message(sprintf("[%s] assess_sgcscore_variance: processed %d/%d combinations; current PseudogeneCombinationID=%s",
+                      Sys.time(), k, total_ids, i))
     }
     
     gene1 <- genegis$Pseudogene1[genegis$PseudogeneCombinationID == i]
@@ -382,14 +385,18 @@ assess_sgcscore_variance <- function(congis, genegis){
     k <- k+1
   }
   
+  # Final log: how many p-values were computed
+  n_computed <- sum(!is.na(genegis$Variance.p))
+  message(sprintf("[%s] assess_sgcscore_variance: completed; computed p-values for %d/%d combinations",
+                  Sys.time(), n_computed, total_ids))
   return(genegis)
 }
 
-compute_construct_differential_scores <- function(gamma, tau){
-  info_cols <- c(colnames(gamma)[1:14], "GI.z") #meta info columns + GI scores
-  pm <- inner_join(gamma[,colnames(gamma) %in% info_cols], 
-                   tau[,colnames(tau) %in% info_cols],
-                   by = info_cols[1:14],
+compute_construct_diff_scores <- function(gamma, tau){
+  info_cols <- c(colnames(gamma)[1:12], "GI.z") #meta info columns + GI scores
+  pm <- inner_join(gamma[, colnames(gamma) %in% info_cols], 
+                   tau[, colnames(tau) %in% info_cols],
+                   by = info_cols[1:12],
                    suffix = c(".Gamma", ".Tau"))
   pm$GI.z <- pm$GI.z.Tau - pm$GI.z.Gamma
   return(pm)
