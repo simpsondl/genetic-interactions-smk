@@ -1,4 +1,6 @@
 .*
 ../outputs/*
 outputs/*
+outputs/
+workflow/data/counts/*.tsv
 !/.gitignore
