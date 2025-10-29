@@ -1,0 +1,9 @@
+name: differential_gi_smk
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.13
+  - snakemake=9.12.0
+  - r-base=4.4.3

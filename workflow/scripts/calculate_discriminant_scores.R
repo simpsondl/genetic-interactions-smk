@@ -30,8 +30,8 @@ gene_gis_var <- assess_sgcscore_variance(gi_scores, gene_scores)
 
 message(sprintf("[%s] assess_sgcscore_variance returned %d rows", Sys.time(), nrow(gene_gis_var)))
 
-message(sprintf("[%s] Calculating Discriminant.score = -log10(Variance.p) * abs(InteractionScore)", Sys.time()))
-gene_gis_var$Discriminant.score <- -log10(gene_gis_var$Variance.p) * abs(gene_gis_var$InteractionScore)
+message(sprintf("[%s] Calculating Discriminant = -log10(Variance.p) * abs(InteractionScore)", Sys.time()))
+gene_gis_var$Discriminant <- -log10(gene_gis_var$Variance.p) * abs(gene_gis_var$InteractionScore)
 
 message(sprintf("[%s] Writing discriminant scores to %s", 
                 Sys.time(), snakemake@output[["output_discriminant_scores"]]))

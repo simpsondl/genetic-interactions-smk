@@ -6,13 +6,17 @@ min_version("9.12.0")
 
 configfile: "../config/config.yaml"
 
+
 include: "rules/helper_input_functions.smk"
 
 rule all:
     input:
         lambda wildcards: _expand_discriminant_score_targets(wildcards),
-        lambda wildcards: _expand_differential_score_targets(wildcards)
+        lambda wildcards: _expand_differential_score_targets(wildcards),
+        lambda wildcards: _expand_hit_targets(wildcards),
+        lambda wildcards: _expand_differential_hit_targets(wildcards)
 
 include: "rules/preprocess.smk"
 include: "rules/calculate_genetic_interaction_scores.smk"
+include: "rules/additional_analyses.smk"
 

@@ -1,3 +1,14 @@
+import os
+
+def _choose_counts(wildcards):
+    tsv = f"data/counts/{wildcards.screen}_raw_counts.tsv"
+    zipf = f"data/counts/{wildcards.screen}_raw_counts.zip"
+    if os.path.exists(tsv):
+        return tsv
+    if os.path.exists(zipf):
+        return zipf
+    raise FileNotFoundError(f"Neither {{tsv}} nor {{zipf}} found for screen {wildcards.screen}")
+
 def _expand_scores_for_screen(wc=None):
     screens = config.get("SCREENS")
     if screens is None:
@@ -40,5 +51,29 @@ def _expand_differential_score_targets(wc=None):
     targets = []
     for sc in screens:
         targets += expand("../outputs/gi_scores/{screen}/differential_scores/differential_scores_{rep}.tsv",
+                          screen=sc, rep=reps)
+    return targets
+
+def _expand_hit_targets(wc=None):
+    screens = config.get("SCREENS")
+    if screens is None:
+        screens = [k.lower().split("_GI_SCORES")[0].lower() for k in config if k.endswith("_GI_SCORES")]
+    targets = []
+    for sc in screens:
+        targets += expand("../outputs/gi_scores/{screen}/discriminant_scores/discriminant_hits_{score}.tsv",
+                          screen=sc, score=config[f"{sc.upper()}_GI_SCORES"])
+    return targets
+
+def _expand_differential_hit_targets(wc=None):
+    screens = config.get("SCREENS")
+    if screens is None:
+        # same fallback as above
+        screens = [k.lower().split("_GI_SCORES")[0].lower() for k in config if k.endswith("_GI_SCORES")]
+    reps = config.get("DIFFERENTIAL_SCORES")
+    if reps is None:
+        raise Exception("Please add a DIFFERENTIAL_SCORES list to config.yaml, e.g. DIFFERENTIAL_SCORES: [OI.R1, OI.R2]")
+    targets = []
+    for sc in screens:
+        targets += expand("../outputs/gi_scores/{screen}/differential_scores/differential_hits_{rep}.tsv",
                           screen=sc, rep=reps)
     return targets

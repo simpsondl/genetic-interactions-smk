@@ -28,8 +28,8 @@ message(sprintf("[%s] Computing gene-level GI scores using score column 'GI.z'",
 
 gene_gis <- compute_gene_interaction_scores(gi_scores, "GI.z")
 
-message(sprintf("[%s] compute_gene_interaction_scores returned %d rows and %d unique GeneCombinationID(s)",
-                Sys.time(), nrow(gene_gis), length(unique(gene_gis$GeneCombinationID))))
+message(sprintf("[%s] compute_gene_interaction_scores returned %d rows and %d unique PseudogeneCombinationID(s)",
+                Sys.time(), nrow(gene_gis), length(unique(gene_gis$PseudogeneCombinationID))))
 
 gene_gis <- left_join(gene_gis, idmap) %>%
     relocate(Pseudogene1:PseudogeneCombinationName)

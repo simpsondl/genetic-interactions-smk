@@ -1,5 +1,6 @@
 library(dplyr)
 library(broom)
+library(data.table)
 
 ### Function for identifying individual sgRNAs which are poorly represented
 ### in either position A or position B at T0
@@ -336,60 +337,79 @@ compute_gene_interaction_scores <- function(gis, scorecol){
 ### Outputs:
 ### ### df containing GI scores averaged across sgRNA IDs
 assess_sgcscore_variance <- function(congis, genegis){
+  # Purpose: compute a Wilcoxon test comparing GI.z for constructs belonging to the
+  # test pseudogene-combination vs relevant control constructs. This refactor
+  # uses data.table for faster subsetting and clearer intent.
   
-  genegis$Variance.p <- NA
-  genegis$Variance.N.NT <- NA
-  genegis$Variance.N.Test <- NA
-  ids <- unique(genegis$PseudogeneCombinationID)
+  # Convert to data.table (non-destructive to original inputs)
+  dt_con <- data.table::as.data.table(congis)
+  dt_gen <- data.table::as.data.table(genegis)
+
+  # Precompute category flags to speed repeated checks
+  dt_con[, `:=`(is_NTNT = Category == "NT+NT", is_XNT = Category == "X+NT")]
+
+  # Key by SecondPseudogene so lookups by gene are fast
+  data.table::setkey(dt_con, SecondPseudogene)
+
+  # Prepare result columns on dt_gen
+  dt_gen[, `:=`(Variance.p = as.numeric(NA), Variance.N.NT = as.integer(NA), Variance.N.Test = as.integer(NA))]
+
+  ids <- dt_gen$PseudogeneCombinationID
   total_ids <- length(ids)
-  k <- 1
-  for (i in ids){
-    
+
+  for (k in seq_along(ids)){
+    i <- ids[k]
     if(k %% 5000 == 0){
       message(sprintf("[%s] assess_sgcscore_variance: processed %d/%d combinations; current PseudogeneCombinationID=%s",
                       Sys.time(), k, total_ids, i))
     }
-    
-    gene1 <- genegis$Pseudogene1[genegis$PseudogeneCombinationID == i]
-    gene2 <- genegis$Pseudogene2[genegis$PseudogeneCombinationID == i]
-  
-    tmp <- congis[congis$SecondPseudogene == gene1 | congis$SecondPseudogene == gene2,]
-    
-    if(grepl("NTPG", gene1) & grepl("NTPG", gene2)) {
-      tmp <- tmp[tmp$PseudogeneCombinationID == i | 
-                    (tmp$Category == "NT+NT" & tmp$SecondPseudogene == gene1) |
-                    (tmp$Category == "NT+NT" & tmp$SecondPseudogene == gene2),]
-    } else if(grepl("NTPG", gene1)){
-      tmp <- tmp[tmp$PseudogeneCombinationID == i | 
-                    (tmp$Category == "NT+NT" & tmp$SecondPseudogene == gene1) |
-                    (tmp$Category == "X+NT" & tmp$SecondPseudogene == gene2),]
-    } else if(grepl("NTPG", gene2)) {
-      tmp <- tmp[tmp$PseudogeneCombinationID == i | 
-                    (tmp$Category == "NT+NT" & tmp$SecondPseudogene == gene2) |
-                    (tmp$Category == "X+NT" & tmp$SecondPseudogene == gene1),]
-    } else {
-      tmp <- tmp[tmp$PseudogeneCombinationID == i | tmp$Category == "X+NT",]
-    }
-    
-    tmp$TestDist <- tmp$PseudogeneCombinationID == i
-    tmp <- tmp[!tmp$Identical,]
 
-    if(length(unique(tmp$TestDist)) == 1){
-      next
+    row_gen <- dt_gen[PseudogeneCombinationID == i]
+    if (nrow(row_gen) == 0) next
+    gene1 <- row_gen$Pseudogene1[1]
+    gene2 <- row_gen$Pseudogene2[1]
+
+    # Fast subset: get all rows where SecondPseudogene is gene1 or gene2
+    tmp <- dt_con[J(c(gene1, gene2)), nomatch = 0]
+
+    # Apply the same selection logic as before but using precomputed flags
+    if(grepl("NTPG", gene1) && grepl("NTPG", gene2)){
+      tmp <- tmp[PseudogeneCombinationID == i | 
+                  (is_NTNT & (SecondPseudogene == gene1 | SecondPseudogene == gene2))]
+    } else if(grepl("NTPG", gene1)){
+      tmp <- tmp[PseudogeneCombinationID == i | 
+                  (is_NTNT & SecondPseudogene == gene1) | (is_XNT & SecondPseudogene == gene2)]
+    } else if(grepl("NTPG", gene2)){
+      tmp <- tmp[PseudogeneCombinationID == i | 
+                  (is_NTNT & SecondPseudogene == gene2) | (is_XNT & SecondPseudogene == gene1)]
+    } else {
+      tmp <- tmp[PseudogeneCombinationID == i | is_XNT]
     }
-    
-    genegis$Variance.p[genegis$PseudogeneCombinationID == i] <- wilcox.test(GI.z ~ TestDist, data = tmp)$p.value
-    genegis$Variance.N.NT[genegis$PseudogeneCombinationID == i] <- sum(!tmp$TestDist)
-    genegis$Variance.N.Test[genegis$PseudogeneCombinationID == i] <- sum(tmp$TestDist)
-    
-    k <- k+1
+
+    # Exclude identical constructs and mark test/control
+    if (nrow(tmp) == 0) next
+    tmp <- tmp[Identical == FALSE]
+    if (nrow(tmp) == 0) next
+    tmp[, TestDist := PseudogeneCombinationID == i]
+
+    # Need both groups present
+    if (tmp[, length(unique(TestDist))] < 2) next
+
+    # Wilcoxon test can fail on degenerate data; handle errors gracefully
+    wt <- try(wilcox.test(GI.z ~ TestDist, data = tmp), silent = TRUE)
+    pval <- if(inherits(wt, "try-error")) NA_real_ else wt$p.value
+
+    dt_gen[PseudogeneCombinationID == i, Variance.p := pval]
+    dt_gen[PseudogeneCombinationID == i, Variance.N.NT := sum(!tmp$TestDist)]
+    dt_gen[PseudogeneCombinationID == i, Variance.N.Test := sum(tmp$TestDist)]
   }
-  
-  # Final log: how many p-values were computed
-  n_computed <- sum(!is.na(genegis$Variance.p))
+
+  n_computed <- sum(!is.na(dt_gen$Variance.p))
   message(sprintf("[%s] assess_sgcscore_variance: completed; computed p-values for %d/%d combinations",
                   Sys.time(), n_computed, total_ids))
-  return(genegis)
+
+  # Return the same type as input (data.frame)
+  return(as.data.frame(dt_gen))
 }
 
 compute_construct_diff_scores <- function(gamma, tau){

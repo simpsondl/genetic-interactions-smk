@@ -17,7 +17,19 @@ if (exists("snakemake") && !is.null(snakemake@log) && length(snakemake@log) > 0)
     }, add = TRUE)
 }
 
-counts <- read_tsv(snakemake@input[["input_counts"]])
+input_counts_path <- snakemake@input[["input_counts"]]
+
+# Support either a plain TSV or a ZIP containing the TSV (expected to contain *_raw_counts.tsv)
+if (grepl("\\.zip$", input_counts_path, ignore.case = TRUE)) {
+    zlist <- utils::unzip(input_counts_path, list = TRUE)
+    target_name <- zlist$Name[grepl("_raw_counts\\.tsv$", zlist$Name, ignore.case = TRUE)]
+    if (length(target_name) == 0) {
+        stop(sprintf("No file matching '*_raw_counts.tsv' found inside zip: %s", input_counts_path))
+    }
+    counts <- read_tsv(unz(input_counts_path, target_name[1]), show_col_types = FALSE)
+} else {
+    counts <- read_tsv(input_counts_path, show_col_types = FALSE)
+}
 to_filt <- read_tsv(snakemake@input[["input_filter_flags"]])
 
 pc <- as.numeric(snakemake@params[["pseudocount"]])

@@ -15,7 +15,7 @@ if (exists("snakemake") && !is.null(snakemake@log) && length(snakemake@log) > 0)
   }, add = TRUE)
 }
 
-infile <- snakemake@input[["input_gi_scores"]]
+infile <- snakemake@input[["input_scores"]]
 outfile <- snakemake@output[["output_hits"]]
 
 message(sprintf("[%s] call_hits.R starting; infile=%s, outfile=%s", 
@@ -23,14 +23,13 @@ message(sprintf("[%s] call_hits.R starting; infile=%s, outfile=%s",
 
 scores <- read_tsv(infile, show_col_types = FALSE)
 
-discr_col <- "Discriminant.score"
+discr_col <- "Discriminant"
 message(sprintf("[%s] Using discriminant column: %s", Sys.time(), discr_col))
 
 # threshold parameter (quantile)
-# Accept either 'hit_threshold' or 'threshold' param from the rule
 hit_threshold <- as.numeric(snakemake@params[["threshold"]])
-if(is.na(hit_threshold) || hit_threshold <= 0 || hit_threshold >= 1){
-  stop("hit_threshold must be a numeric between 0 and 1 (exclusive), e.g. 0.995)")
+if(is.na(hit_threshold) || hit_threshold < 0 || hit_threshold > 1){
+  stop("hit_threshold must be a numeric between 0 and 1 (inclusive), e.g. 0.995)")
 }
 message(sprintf("[%s] Using quantile threshold: %s", Sys.time(), hit_threshold))
 

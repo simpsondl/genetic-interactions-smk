@@ -1,10 +1,10 @@
 rule apply_count_filters:
     input:
-        input_counts="data/counts/{screen}_raw_counts.tsv"
+        input_counts=_choose_counts
     output:
         output_filter_flags="../outputs/misc_results/{screen}_filter_flags.tsv"
     log:
-        "../outputs/logs/{screen}_apply_count_filters.log"
+        "../outputs/logs/{screen}/{screen}_apply_count_filters.log"
     params:
         individual_sgRNA_median_threshold=config["INDIVIDUAL_SGRNA_MEDIAN_THRESHOLD"],
         combination_sgRNA_count_threshold=config["COMBINATION_SGRNA_COUNT_THRESHOLD"],
@@ -14,14 +14,14 @@ rule apply_count_filters:
 
 rule calculate_phenotypes:
     input:
-        input_counts="data/counts/{screen}_raw_counts.tsv",
+        input_counts=_choose_counts,
         input_filter_flags="../outputs/misc_results/{screen}_filter_flags.tsv"
     output:
         output_phenotypes="../outputs/phenotypes/{screen}_phenotypes.tsv",
         output_orientation_indep_phenotypes="../outputs/phenotypes/{screen}_orientation_independent_phenotypes.tsv",
         output_single_sgRNA_phenotypes="../outputs/phenotypes/{screen}_single_sgRNA_phenotypes.tsv"
     log:
-        "../outputs/logs/{screen}_calculate_phenotypes.log"
+        "../outputs/logs/{screen}/{screen}_calculate_phenotypes.log"
     params:
         counts_cols=lambda wildcards: config[f"{wildcards.screen.upper()}_COUNTS_COLUMNS"],
         pseudocount=config["PSEUDOCOUNT"],
@@ -42,7 +42,7 @@ rule apply_correlation_filter:
         output_full_filter_flags="../outputs/misc_results/{screen}_full_filter_flags.tsv",
         output_correlation_results="../outputs/misc_results/{screen}_correlation_results.tsv"
     log:
-        "../outputs/logs/{screen}_apply_correlation_filter.log"
+        "../outputs/logs/{screen}/{screen}_apply_correlation_filter.log"
     params:
         no_correlation_threshold=config["NO_CORRELATION_THRESHOLD"]
     script:
