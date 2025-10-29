@@ -6,6 +6,8 @@ This pipeline can be adapted to work on other datasets. However, in order to use
 
 The provided configuration file in `config/` will reproduce the analyses as presented in our manuscript; by adjusting these parameters, researchers can easily re-analyze our data as desired (e.g., with different filtering thresholds, or thresholds for determining hits).  
 
+Data presented in our manuscript, along with data from two other manuscripts, are also available through our interactive data portal: [https://parpi.princeton.edu/map]
+
 ## Layout
 
 - `config/` - configuration files (primary: `config.yaml`).
@@ -127,3 +129,5 @@ This pipeline accepts compressed counts files in ZIP or TSV format for the initi
 ## Citation
 
 If you use these datasets or workflow in your work, please cite the following reference:
+
+> Simpson D, Ling J, Jing Y, Adamson B. Mapping the Genetic Interaction Network of PARP inhibitor Response. bioRxiv [Preprint]. 2023 Aug 20:2023.08.19.553986. doi: 10.1101/2023.08.19.553986. PMID: 37645833; PMCID: PMC10462155.
