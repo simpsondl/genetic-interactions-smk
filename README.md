@@ -15,7 +15,7 @@ Data presented in our manuscript, along with data from two other manuscripts, ar
 - `workflow/Snakefile` - main Snakemake workflow entrypoint.
 - `workflow/rules/` - Snakemake rule files.
 - `workflow/scripts/` - R scripts executed by rules. These expect to be run via Snakemake and access inputs/outputs/params through the `snakemake` object.
-- `workflow/envs/` - optional conda/environment YAMLs used by rules (if present).
+- `workflow/envs/` - conda/environment YAMLs to produce same environment used in original data analysis.
 - `outputs/` - pipeline outputs (organized by screen/score) and logs, created when pipeline is run.
 
 ## Requirements
