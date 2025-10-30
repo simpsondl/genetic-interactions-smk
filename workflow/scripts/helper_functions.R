@@ -351,29 +351,15 @@ compute_gene_interaction_scores <- function(gis, scorecol) {
 ### ### score_col - column name (string) with numeric scores (default "GI.z")
 ### ### group_col - column name (string) with grouping indicator (logical/factor) (default "testdist")
 ### Output: list(pval = numeric or NA_real_, n_test = integer, n_control = integer)
-safe_wilcox_test <- function(df, score_col = "GI.z", group_col = "testdist") {
-  # Make sure group column is present
-  if (!(group_col %in% colnames(df)) || !(score_col %in% colnames(df))) {
-    return(list(pval = NA_real_, n_test = 0L, n_control = 0L))
-  }
-
-  if (length(unique(df[[group_col]])) < 2) {
-    return(list(pval = NA_real_, n_test = 0L, n_control = 0L))
-  }
-  
+safe_wilcox_test <- function(df, score_col = "GI.z", group_col = "testdist") { 
   grp <- df[[group_col]]
   # Ensure logical vector for counting
   grp_logical <- as.logical(grp)
   n_test <- as.integer(sum(grp_logical, na.rm = TRUE))
   n_control <- as.integer(sum(!grp_logical, na.rm = TRUE))
 
-  # If either group is empty, return NA
-  if (n_test < 1L || n_control < 1L) {
-    return(list(pval = NA_real_, n_test = n_test, n_control = n_control))
-  }
-
   # Try the test and return NA on error
-  wt <- try(stats::wilcox.test(as.formula(paste0(score_col, " ~ ", group_col)), data = df), silent = TRUE)
+  wt <- try(wilcox.test(as.formula(paste0(score_col, " ~ ", group_col)), data = df), silent = TRUE)
   pval <- if (inherits(wt, "try-error")) NA_real_ else wt$p.value
   return(list(pval = pval, n_test = n_test, n_control = n_control))
 }
@@ -447,23 +433,22 @@ assess_sgcscore_variance <- function(congis, genegis) {
     }
 
     row_gen <- dt_gen[PseudogeneCombinationID == i]
-    if (nrow(row_gen) == 0) next
     gene1 <- row_gen$Pseudogene1[1]
     gene2 <- row_gen$Pseudogene2[1]
 
     # Fast subset: get all rows where SecondPseudogene is gene1 or gene2
     tmp <- dt_con[J(c(gene1, gene2)), nomatch = 0]
-    if (nrow(tmp) == 0) next
-
-    # Build selection index using helper to reduce cyclomatic complexity
+    
+    # Build selection index
     sel_idx <- build_selection_index(tmp, i, gene1, gene2)
 
-    if (!any(sel_idx)) next
     tmp2 <- tmp[sel_idx, ]
     tmp2 <- tmp2[tmp2$Identical == FALSE, ]
-    if (nrow(tmp2) == 0) next
 
     tmp2$testdist <- tmp2$PseudogeneCombinationID == i
+    # if (length(unique(tmp2$testdist)) == 1) {
+    #   next
+    # }
 
     # Run Wilcoxon test safely via helper (returns p-value and group sizes)
     wres <- safe_wilcox_test(tmp2, score_col = "GI.z", group_col = "testdist")

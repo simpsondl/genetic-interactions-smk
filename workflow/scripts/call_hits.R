@@ -52,7 +52,7 @@ scores$Hit <- scores[[discr_col]] > qval
 # Report counts
 n_hits <- sum(scores$Hit, na.rm = TRUE)
 n_total <- nrow(scores)
-message(sprintf("[%s] Hit summary: %d/%d (%.2f%%)", Sys.time(), n_hits, n_total, 100 * n_hits / n_total))
+message(sprintf("[%s] Hit summary: %d/%d (%.2f percent)", Sys.time(), n_hits, n_total, 100 * n_hits / n_total))
 
 # Write out
 message(sprintf("[%s] Writing output to %s", Sys.time(), outfile))
