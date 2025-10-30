@@ -2,7 +2,7 @@ rule apply_count_filters:
     input:
         input_counts=_choose_counts
     output:
-        output_filter_flags="../outputs/misc_results/{screen}_filter_flags.tsv"
+        output_filter_flags="../outputs/misc_results/{screen,[^_]+}_filter_flags.tsv"
     log:
         "../outputs/logs/{screen}/{screen}_apply_count_filters.log"
     params:
@@ -17,9 +17,9 @@ rule calculate_phenotypes:
         input_counts=_choose_counts,
         input_filter_flags="../outputs/misc_results/{screen}_filter_flags.tsv"
     output:
-        output_phenotypes="../outputs/phenotypes/{screen}_phenotypes.tsv",
-        output_orientation_indep_phenotypes="../outputs/phenotypes/{screen}_orientation_independent_phenotypes.tsv",
-        output_single_sgRNA_phenotypes="../outputs/phenotypes/{screen}_single_sgRNA_phenotypes.tsv"
+        output_phenotypes="../outputs/phenotypes/{screen,[^_]+}_phenotypes.tsv",
+        output_orientation_indep_phenotypes="../outputs/phenotypes/{screen,[^_]+}_orientation_independent_phenotypes.tsv",
+        output_single_sgRNA_phenotypes="../outputs/phenotypes/{screen,[^_]+}_single_sgRNA_phenotypes.tsv"
     log:
         "../outputs/logs/{screen}/{screen}_calculate_phenotypes.log"
     params:

@@ -3,19 +3,13 @@ library(dplyr)
 library(broom)
 
 source("scripts/helper_functions.R")
+source("scripts/r_precise_io.R")
 
 # Redirect R output/messages to Snakemake log if provided
 if (exists("snakemake") && !is.null(snakemake@log) && length(snakemake@log) > 0) {
-    log_file <- snakemake@log[[1]]
-    log_con <- file(log_file, open = "wt")
-    sink(log_con, type = "output")
-    sink(log_con, type = "message")
-    options(warn = 1)
-    on.exit({
-        sink(type = "message")
-        sink(type = "output")
-        close(log_con)
-    }, add = TRUE)
+    source("scripts/dual_logging.R")
+    .dual_cleanup <- setup_dual_logging(snakemake@log[[1]])
+    on.exit({ .dual_cleanup() }, add = TRUE)
 }
 
 orientation_indep_phenotypes <- read_tsv(snakemake@input[["input_orientation_indep_phenotypes"]])
@@ -29,7 +23,7 @@ out_dir <- snakemake@output[["output_dir"]]
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
 message(sprintf("[%s] calculate_gi_scores.R starting; score=%s", Sys.time(), score))
-message(sprintf("[%s] Inputs: orientation_indep=%s (%d rows), single_phenotypes=%s (%d rows)",
+message(sprintf("[%s] Inputs: combination_phenotypes=%s (%d rows), single_phenotypes=%s (%d rows)",
                 Sys.time(), snakemake@input[["input_orientation_indep_phenotypes"]], nrow(orientation_indep_phenotypes),
                 snakemake@input[["input_single_sgRNA_phenotypes"]], nrow(single_phenotypes)))
 message(sprintf("[%s] Writing individual per-sgRNA files into: %s", Sys.time(), out_dir))
@@ -45,7 +39,7 @@ for (idx in seq_along(single_phenotypes$sgRNA.ID)) {
 
     # Log progress every 100 sgRNAs
     if (idx %% 100 == 0) {
-        message(sprintf("[%s] processing sgRNA %d/%d (id=%s)", score, idx, n, i))
+        message(sprintf("[%s] processing sgRNA %d/%d (id=%s)", Sys.time(), idx, n, i))
     }
 
     gi_scores <- compute_gis(i, single_phenotypes, orientation_indep_phenotypes, score)
@@ -89,3 +83,19 @@ write_tsv(combined_ests, snakemake@output[["output_model_estimates"]])
 message(sprintf("[%s] Writing combined model stats to %s", 
                 Sys.time(), snakemake@output[["output_model_stats"]]))
 write_tsv(combined_stats, snakemake@output[["output_model_stats"]])
+
+# Save high-precision workspace handoff for downstream rules
+gi_workspace <- list(
+    meta = list(
+        screen = snakemake@wildcards[["screen"]],
+        score = score,
+        created = Sys.time(),
+        rule = "compute_genetic_interaction_scores"
+    ),
+    combined_all = combined_all,
+    combined_ests = combined_ests,
+    combined_stats = combined_stats
+)
+
+save_workspace(gi_workspace, snakemake@output[["output_workspace"]])
+message(sprintf("[%s] Saved GI workspace to %s", Sys.time(), snakemake@output[["output_workspace"]]))

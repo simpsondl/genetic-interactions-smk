@@ -10,13 +10,20 @@ configfile: "../config/config.yaml"
 include: "rules/helper_input_functions.smk"
 
 rule all:
-    input:
-        lambda wildcards: _expand_discriminant_score_targets(wildcards),
-        lambda wildcards: _expand_differential_score_targets(wildcards),
-        lambda wildcards: _expand_hit_targets(wildcards),
-        lambda wildcards: _expand_differential_hit_targets(wildcards)
+   input:
+       lambda wildcards: _expand_discriminant_score_targets(wildcards),
+       lambda wildcards: _expand_differential_score_targets(wildcards),
+       lambda wildcards: _expand_hit_targets(wildcards),
+       lambda wildcards: _expand_differential_hit_targets(wildcards)
 
 include: "rules/preprocess.smk"
 include: "rules/calculate_genetic_interaction_scores.smk"
+#include: "rules/precision_pipeline.smk"
 include: "rules/additional_analyses.smk"
+
+# Prefer the consolidated high-precision pipeline when outputs are ambiguous
+# ruleorder: compute_full_gi_pipeline_precision > compute_genetic_interaction_scores
+# ruleorder: compute_full_gi_pipeline_precision > calculate_gene_level_scores
+# ruleorder: compute_full_gi_pipeline_precision > calculate_discriminant_scores
+# ruleorder: compute_full_gi_pipeline_precision > call_hits
 

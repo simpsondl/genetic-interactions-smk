@@ -142,6 +142,12 @@ calculate_single_sgRNA_phenotypes <- function(phenos){
                              "N" = 0)
   
   for(i in 1:nrow(single.pheno)){
+    if (i %% 100 == 0) {
+            progress_pct <- round((i / nrow(single.pheno)) * 100, 1)
+            message(sprintf("[%s] Processing sgRNA %d/%d (%s percent) - ID: %s", 
+                            Sys.time(), i, nrow(single.pheno), progress_pct, single.pheno$sgRNA.ID[i]))
+        }
+
     # Handle non-targeting case
     if(grepl("non-targeting",single.pheno$sgRNA.ID[i])){
       # Extract all non-targeting guide combinations with desired non-targeting guide in position A or B
@@ -420,4 +426,57 @@ compute_construct_diff_scores <- function(gamma, tau){
                    suffix = c(".Gamma", ".Tau"))
   pm$GI.z <- pm$GI.z.Tau - pm$GI.z.Gamma
   return(pm)
+}
+
+### Function to create initial filter dataframe from counts data
+### Used in apply_filters.R logic
+create_filter_df <- function(counts, sgrna_filt, combination_filt) {
+  # Create initial filter dataframe
+  to_filt <- counts[, 1:13]
+  to_filt$Flag <- NA
+  
+  # Flag combinations involving identified sgRNAs that have low median representation
+  to_filt$Flag[to_filt$FirstPosition %in% sgrna_filt | to_filt$SecondPosition %in% sgrna_filt] <- 
+    "Low median representation at T0"
+  
+  # Flag individual combinations which have low representation at T0
+  to_filt$Flag[to_filt$ConstructID %in% combination_filt & is.na(to_filt$Flag)] <- "Low representation at T0"
+  
+  return(to_filt)
+}
+
+### Function to apply correlation filter and return all results
+### Consolidates logic from apply_correlation_filter.R
+apply_correlation_filter <- function(raw_phenotypes, orind_phenotypes, single_phenotypes, filter_flags, threshold) {
+  
+  # Join orientation-independent phenotypes with raw phenotypes
+  raw_phenotypes <- left_join(raw_phenotypes,
+                             orind_phenotypes[, c("GuideCombinationID", 
+                                                 "Gamma.OI.R1", "Gamma.OI.R2", "Gamma.OI.Avg", 
+                                                 "Tau.OI.R1", "Tau.OI.R2", "Tau.OI.Avg", 
+                                                 "Rho.OI.R1", "Rho.OI.R2", "Rho.OI.Avg")],
+                             by = "GuideCombinationID")
+  
+  # Apply correlation filter
+  nocorr_filt <- filt_nocorrelation(combphenos = raw_phenotypes,
+                                   singlephenos = single_phenotypes,
+                                   filterthresh = threshold)
+  
+  # Update filter flags with correlation results
+  updated_filter_flags <- filter_flags
+  updated_filter_flags$Flag[updated_filter_flags$FirstPosition %in% nocorr_filt[[2]] | 
+                           updated_filter_flags$SecondPosition %in% nocorr_filt[[2]]] <- "Gamma no correlation"
+  updated_filter_flags$Flag[updated_filter_flags$FirstPosition %in% nocorr_filt[[3]] | 
+                           updated_filter_flags$SecondPosition %in% nocorr_filt[[3]]] <- "Tau no correlation"
+  
+  # Apply filters to phenotype data
+  phenos_filt <- raw_phenotypes[is.na(updated_filter_flags$Flag), ]
+  single_pheno_filt <- single_phenotypes[!(single_phenotypes$sgRNA.ID %in% c(nocorr_filt[[2]], nocorr_filt[[3]])), ]
+  
+  return(list(
+    filtered_phenotypes = phenos_filt,
+    filtered_single_phenotypes = single_pheno_filt,
+    updated_filter_flags = updated_filter_flags,
+    correlation_results = nocorr_filt[[1]]
+  ))
 }

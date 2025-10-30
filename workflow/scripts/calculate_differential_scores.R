@@ -2,23 +2,33 @@ library(readr)
 library(dplyr)
 
 source("scripts/helper_functions.R")
+source("scripts/r_precise_io.R")
 
-# Redirect R output/messages to Snakemake log if provided
+# Dual logging to both console and log file when running under Snakemake
 if (exists("snakemake") && !is.null(snakemake@log) && length(snakemake@log) > 0) {
-    log_file <- snakemake@log[[1]]
-    log_con <- file(log_file, open = "wt")
-    sink(log_con, type = "output")
-    sink(log_con, type = "message")
-    options(warn = 1)
-    on.exit({
-        sink(type = "message")
-        sink(type = "output")
-        close(log_con)
-    }, add = TRUE)
+    source("scripts/dual_logging.R")
+    .dual_cleanup <- setup_dual_logging(snakemake@log[[1]])
+    on.exit({ .dual_cleanup() }, add = TRUE)
 }
 
-gamma <- read_tsv(snakemake@input[["input_gamma_gi_scores"]])
-tau <- read_tsv(snakemake@input[["input_tau_gi_scores"]])
+gamma <- NULL
+tau <- NULL
+if (!is.null(snakemake@input[["input_gamma_workspace"]])) {
+    message(sprintf("[%s] Loading Gamma workspace: %s", Sys.time(), snakemake@input[["input_gamma_workspace"]]))
+    gamma_ws <- load_workspace(snakemake@input[["input_gamma_workspace"]])
+    validate_workspace(gamma_ws, c("combined_all"))
+    gamma <- gamma_ws$combined_all
+} else {
+    gamma <- read_tsv(snakemake@input[["input_gamma_gi_scores"]])
+}
+if (!is.null(snakemake@input[["input_tau_workspace"]])) {
+    message(sprintf("[%s] Loading Tau workspace: %s", Sys.time(), snakemake@input[["input_tau_workspace"]]))
+    tau_ws <- load_workspace(snakemake@input[["input_tau_workspace"]])
+    validate_workspace(tau_ws, c("combined_all"))
+    tau <- tau_ws$combined_all
+} else {
+    tau <- read_tsv(snakemake@input[["input_tau_gi_scores"]])
+}
 idmap <- read_tsv(snakemake@input[["input_idmap"]])
 message(sprintf("[%s] calculate_differential_scores.R starting", Sys.time()))
 message(sprintf("[%s] Inputs: gamma=%s (%d rows), tau=%s (%d rows), idmap=%s (%d rows)",
@@ -53,3 +63,18 @@ message(sprintf("[%s] Writing outputs: differential=%s, gene_differential=%s, di
 write_tsv(nu, snakemake@output[["output_differential_scores"]])
 write_tsv(nu_genes, snakemake@output[["output_gene_differential_scores"]])
 write_tsv(nu_var, snakemake@output[["output_discriminant_differential_scores"]])
+
+# Save high-precision differential workspace for downstream hits calling
+diff_ws <- list(
+    meta = list(
+        screen = snakemake@params[["screen"]],
+        rep = snakemake@params[["rep"]],
+        created = Sys.time(),
+        rule = "calculate_differential_scores"
+    ),
+    differential_constructs = nu,
+    differential_genes = nu_genes,
+    differential_discriminant = nu_var
+)
+save_workspace(diff_ws, snakemake@output[["output_diff_workspace"]])
+message(sprintf("[%s] Saved differential workspace to %s", Sys.time(), snakemake@output[["output_diff_workspace"]]))
