@@ -102,7 +102,8 @@ snakemake --cores 4 \
 --snakefile workflow/Snakefile \
 --configfile config/config.yaml
 ```
- 
+
+Note, however, that the Snakemake workflow management system must be available in the current environment regardless (and that all rules point to the same environment file). 
 
 ## Logs and troubleshooting
 

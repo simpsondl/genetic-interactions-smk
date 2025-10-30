@@ -1,6 +1,4 @@
 library(dplyr)
-library(broom)
-library(data.table)
 
 ### Function for identifying individual sgRNAs which are poorly represented
 ### in either position A or position B at T0
@@ -297,38 +295,6 @@ compute_gis <- function(query, singlepheno_df, pairpheno_df, phenocol) {
   return(list(tmp_data_merge, pair_pred, lm_fit))
 }
 
-### Function for cleanly saving results from compute_gis - used to establish save df's
-### Inputs:
-### ### gis - output from calculate_gis function
-### Outputs:
-### ### list containing three elements, in order:
-### ### ### df with gi scores
-### ### ### df with model coefficients
-### ### ### df with model statistics
-create_interaction_result_df <- function(gis) {
-  all_gis <- gis[[1]]
-  ests <- data.frame(sgRNA.ID = i, tidy(gis[[3]]))
-  stats <- data.frame(sgRNA.ID = i, glance(gis[[3]]))
-
-  return(list(all_gis, ests, stats))
-}
-
-### Function for cleanly saving results from compute_gis - used after create_interaction_result_df
-### ### gis - output from calculate_gis function
-### ### prev - output from either create_interaction_result_df or update_interaction_result_df
-### Outputs:
-### ### list containing three elements, in order:
-### ### ### df with gi scores
-### ### ### df with model coefficients
-### ### ### df with model statistics
-update_interaction_result_df <- function(gis, prev) {
-  all_gis <- rbind(prev[[1]], gis[[1]])
-  ests <- rbind(prev[[2]], data.frame(sgRNA.ID = i, tidy(gis[[3]])))
-  stats <- rbind(prev[[3]], data.frame(sgRNA.ID = i, glance(gis[[3]])))
-  
-  return(list(all_gis, ests, stats))
-}
-
 ### Function for aggregating the results from compute_gis across constructs
 ### Inputs:
 ### ### gis - final full output from update_interaction_result_df
@@ -336,8 +302,9 @@ update_interaction_result_df <- function(gis, prev) {
 ### Outputs:
 ### ### df containing gene-level GI scores
 compute_gene_interaction_scores <- function(gis, scorecol) {
-  info_cols <- c("GuideCombinationID", "PseudogeneCombinationID", "Category", "Control", scorecol)
-  gene_gis <- gis[, colnames(gis) %in% info_cols] %>% 
+  info_cols <- c("GuideCombinationID", "PseudogeneCombinationID", "Identical", "Category", "Control", scorecol)
+  gene_gis <- gis[, colnames(gis) %in% info_cols] %>%
+                filter(Identical == FALSE) %>% 
                 group_by(PseudogeneCombinationID) %>% 
                 mutate(InteractionScore = mean(!!sym(scorecol)), N = n()) %>%
                 select(c(PseudogeneCombinationID, Category, InteractionScore, N)) %>% 
@@ -446,9 +413,7 @@ assess_sgcscore_variance <- function(congis, genegis) {
     tmp2 <- tmp2[tmp2$Identical == FALSE, ]
 
     tmp2$testdist <- tmp2$PseudogeneCombinationID == i
-    # if (length(unique(tmp2$testdist)) == 1) {
-    #   next
-    # }
+    tmp2 <- tmp2 %>% distinct()
 
     # Run Wilcoxon test safely via helper (returns p-value and group sizes)
     wres <- safe_wilcox_test(tmp2, score_col = "GI.z", group_col = "testdist")
@@ -479,57 +444,4 @@ compute_construct_diff_scores <- function(gamma, tau) {
                    suffix = c(".Gamma", ".Tau"))
   pm$GI.z <- pm$GI.z.Tau - pm$GI.z.Gamma
   return(pm)
-}
-
-### Function to create initial filter dataframe from counts data
-### Used in apply_filters.R logic
-create_filter_df <- function(counts, sgrna_filt, combination_filt) {
-  # Create initial filter dataframe
-  to_filt <- counts[, 1:13]
-  to_filt$Flag <- NA
-  
-  # Flag combinations involving identified sgRNAs that have low median representation
-  to_filt$Flag[to_filt$FirstPosition %in% sgrna_filt | to_filt$SecondPosition %in% sgrna_filt] <- 
-    "Low median representation at T0"
-  
-  # Flag individual combinations which have low representation at T0
-  to_filt$Flag[to_filt$ConstructID %in% combination_filt & is.na(to_filt$Flag)] <- "Low representation at T0"
-  
-  return(to_filt)
-}
-
-### Function to apply correlation filter and return all results
-### Consolidates logic from apply_correlation_filter.R
-apply_correlation_filter <- function(raw_phenotypes, orind_phenotypes, single_phenotypes, filter_flags, threshold) {
-  
-  # Join orientation-independent phenotypes with raw phenotypes
-  raw_phenotypes <- left_join(raw_phenotypes,
-                             orind_phenotypes[, c("GuideCombinationID", 
-                                                 "Gamma.OI.R1", "Gamma.OI.R2", "Gamma.OI.Avg", 
-                                                 "Tau.OI.R1", "Tau.OI.R2", "Tau.OI.Avg", 
-                                                 "Rho.OI.R1", "Rho.OI.R2", "Rho.OI.Avg")],
-                             by = "GuideCombinationID")
-  
-  # Apply correlation filter
-  nocorr_filt <- filt_nocorrelation(combphenos = raw_phenotypes,
-                                   singlephenos = single_phenotypes,
-                                   filterthresh = threshold)
-  
-  # Update filter flags with correlation results
-  updated_filter_flags <- filter_flags
-  updated_filter_flags$Flag[updated_filter_flags$FirstPosition %in% nocorr_filt[[2]] | 
-                           updated_filter_flags$SecondPosition %in% nocorr_filt[[2]]] <- "Gamma no correlation"
-  updated_filter_flags$Flag[updated_filter_flags$FirstPosition %in% nocorr_filt[[3]] | 
-                           updated_filter_flags$SecondPosition %in% nocorr_filt[[3]]] <- "Tau no correlation"
-  
-  # Apply filters to phenotype data
-  phenos_filt <- raw_phenotypes[is.na(updated_filter_flags$Flag), ]
-  single_pheno_filt <- single_phenotypes[!(single_phenotypes$sgRNA.ID %in% c(nocorr_filt[[2]], nocorr_filt[[3]])), ]
-  
-  return(list(
-    filtered_phenotypes = phenos_filt,
-    filtered_single_phenotypes = single_pheno_filt,
-    updated_filter_flags = updated_filter_flags,
-    correlation_results = nocorr_filt[[1]]
-  ))
 }
