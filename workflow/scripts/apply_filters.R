@@ -3,18 +3,11 @@ library(dplyr)
 
 source("scripts/helper_functions.R")
 
-# If Snakemake provided a log file for this job, redirect both stdout and messages there
+# Dual logging to both console and log file when running under Snakemake
 if (exists("snakemake") && !is.null(snakemake@log) && length(snakemake@log) > 0) {
-  log_file <- snakemake@log[[1]]
-  log_con <- file(log_file, open = "wt")
-  sink(log_con, type = "output")
-  sink(log_con, type = "message")
-  options(warn = 1)
-  on.exit({
-    sink(type = "message")
-    sink(type = "output")
-    close(log_con)
-  }, add = TRUE)
+  source("scripts/dual_logging.R")
+  .dual_cleanup <- setup_dual_logging(snakemake@log[[1]])
+  on.exit({ .dual_cleanup() }, add = TRUE)
 }
 
 input_counts_path <- snakemake@input[["input_counts"]]
