@@ -8,7 +8,9 @@ source("scripts/r_precise_io.R")
 if (exists("snakemake") && !is.null(snakemake@log) && length(snakemake@log) > 0) {
     source("scripts/dual_logging.R")
     .dual_cleanup <- setup_dual_logging(snakemake@log[[1]])
-    on.exit({ .dual_cleanup() }, add = TRUE)
+    on.exit({ 
+        .dual_cleanup() 
+    }, add = TRUE)
 }
 
 gamma <- NULL
@@ -47,7 +49,7 @@ message(sprintf("[%s] compute_gene_interaction_scores returned %d rows", Sys.tim
 
 nu_genes <- left_join(nu_genes, idmap) %>% relocate(Pseudogene1:PseudogeneCombinationName)
 message(sprintf("[%s] After joining idmap, gene-level table has %d rows and columns: %s", Sys.time(),
-                nrow(nu_genes), paste(colnames(nu_genes), collapse=", ")))
+                nrow(nu_genes), paste(colnames(nu_genes), collapse = ", ")))
 
 message(sprintf("[%s] Assessing variance for gene-level differential scores (assess_sgcscore_variance)", Sys.time()))
 nu_var <- assess_sgcscore_variance(nu, nu_genes)

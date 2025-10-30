@@ -40,6 +40,6 @@ setup_dual_logging <- function(log_path) {
         # If no log file, just use regular console output
         return(function() {
             
-        }) # No-op cleanup function
+        })
     }
 }

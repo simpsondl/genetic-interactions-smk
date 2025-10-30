@@ -8,7 +8,9 @@ source("scripts/r_precise_io.R")
 if (exists("snakemake") && !is.null(snakemake@log) && length(snakemake@log) > 0) {
     source("scripts/dual_logging.R")
     .dual_cleanup <- setup_dual_logging(snakemake@log[[1]])
-    on.exit({ .dual_cleanup() }, add = TRUE)
+    on.exit({ 
+        .dual_cleanup() 
+    }, add = TRUE)
 }
 
 gi_tbl <- NULL

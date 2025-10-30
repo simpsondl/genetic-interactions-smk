@@ -10,7 +10,7 @@ cap <- 3.5
 
 parp1_gamma_model$GI.capped <- parp1_gamma_model$GI.z
 parp1_gamma_model$GI.capped[parp1_gamma_model$GI.capped >= cap] <- cap
-parp1_gamma_model$GI.capped[parp1_gamma_model$GI.capped <= -1*cap] <- -1*cap
+parp1_gamma_model$GI.capped[parp1_gamma_model$GI.capped <= -1 * cap] <- -1 * cap
 
 parp1_gamma_model$lb <- NA
 parp1_gamma_model$lb[parp1_gamma_model$sgRNA.id == "PARP2_-_20811828.23-P1P2"] <- "PARP2_1"
@@ -35,9 +35,9 @@ gamma_plt <- ggplot(parp1_gamma_model, aes(single, Gamma.OI.Avg, label = lb)) +
             col = "darkred", linewidth = 2, alpha = 0.5) +
   geom_point(aes(color = GI.capped), 
              shape = 16) + 
-  geom_point(data = parp1_gamma_model[!is.na(parp1_gamma_model$lb),], 
+  geom_point(data = parp1_gamma_model[!is.na(parp1_gamma_model$lb), ], 
              shape = 1, size = 3, col = "black") +
-  geom_text_repel(data = parp1_gamma_model[!is.na(parp1_gamma_model$lb),], 
+  geom_text_repel(data = parp1_gamma_model[!is.na(parp1_gamma_model$lb), ], 
                   size = 3, max.overlaps = Inf, 
                   xlim = c(0.05, NA), col = "black") +
   theme_bw() +
@@ -69,7 +69,7 @@ parp1_tau_model <- read_tsv(snakemake@input[["input_tau"]],
 
 parp1_tau_model$GI.capped <- parp1_tau_model$GI.z
 parp1_tau_model$GI.capped[parp1_tau_model$GI.capped >= cap] <- cap
-parp1_tau_model$GI.capped[parp1_tau_model$GI.capped <= -1*cap] <- -1*cap
+parp1_tau_model$GI.capped[parp1_tau_model$GI.capped <= -1 * cap] <- -1 * cap
 
 
 parp1_tau_model$lb <- NA
@@ -95,9 +95,9 @@ tau_plt <- ggplot(parp1_tau_model, aes(single, Tau.OI.Avg, label = lb)) +
             col = "darkred", linewidth = 2, alpha = 0.5) +
   geom_point(aes(color = GI.capped), 
              shape = 16) + 
-  geom_point(data = parp1_tau_model[!is.na(parp1_tau_model$lb),], 
+  geom_point(data = parp1_tau_model[!is.na(parp1_tau_model$lb), ], 
              shape = 1, size = 3, col = "black") +
-  geom_text_repel(data = parp1_tau_model[!is.na(parp1_tau_model$lb),], 
+  geom_text_repel(data = parp1_tau_model[!is.na(parp1_tau_model$lb), ], 
                   size = 3, max.overlaps = Inf, 
                   xlim = c(0.05, NA), col = "black") +
   theme_bw() +

@@ -7,7 +7,9 @@ source("scripts/helper_functions.R")
 if (exists("snakemake") && !is.null(snakemake@log) && length(snakemake@log) > 0) {
   source("scripts/dual_logging.R")
   .dual_cleanup <- setup_dual_logging(snakemake@log[[1]])
-  on.exit({ .dual_cleanup() }, add = TRUE)
+  on.exit({ 
+    .dual_cleanup() 
+  }, add = TRUE)
 }
 
 input_counts_path <- snakemake@input[["input_counts"]]
@@ -31,20 +33,20 @@ doubs <- snakemake@params[["doublings"]]
 cols_for_cond <- snakemake@params[["counts_cols"]]
 
 message(sprintf("[%s] calculate_phenotypes.R starting; pseudocount=%s, normalize=%s", Sys.time(), pc, norm))
-message(sprintf("[%s] doublings provided: %s", Sys.time(), paste(doubs, collapse=", ")))
+message(sprintf("[%s] doublings provided: %s", Sys.time(), paste(doubs, collapse = ", ")))
 message(sprintf("[%s] columns used for conditions: %s", Sys.time(), 
-                paste(colnames(counts)[cols_for_cond], collapse=", ")))
+                paste(colnames(counts)[cols_for_cond], collapse = ", ")))
 
 # Define conditions in each arm
 cond_df <- data.frame(Colname = colnames(counts[, cols_for_cond]),
                       Samplename = gsub("\\.R.*", "", colnames(counts[, cols_for_cond])),
-                      Replicate = gsub(".*\\.","", colnames(counts[, cols_for_cond])))
+                      Replicate = gsub(".*\\.", "", colnames(counts[, cols_for_cond])))
 
 # Calculate phenotypes for non-flagged constructs
 keep_constructs <- to_filt$ConstructID[is.na(to_filt$Flag)]
 message(sprintf("[%s] Number of constructs to process: %d", Sys.time(), length(keep_constructs)))
 message(sprintf("[%s] Starting calculate_phenotypes on %d constructs", Sys.time(), length(keep_constructs)))
-raw_phenotypes <- calculate_phenotypes(counts = counts[counts$ConstructID %in% keep_constructs,],
+raw_phenotypes <- calculate_phenotypes(counts = counts[counts$ConstructID %in% keep_constructs, ],
                                    conds = cond_df,
                                    pseudocount = pc,
                                    normalize = norm,

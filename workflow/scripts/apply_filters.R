@@ -7,7 +7,9 @@ source("scripts/helper_functions.R")
 if (exists("snakemake") && !is.null(snakemake@log) && length(snakemake@log) > 0) {
   source("scripts/dual_logging.R")
   .dual_cleanup <- setup_dual_logging(snakemake@log[[1]])
-  on.exit({ .dual_cleanup() }, add = TRUE)
+  on.exit({ 
+    .dual_cleanup() 
+  }, add = TRUE)
 }
 
 input_counts_path <- snakemake@input[["input_counts"]]
@@ -29,13 +31,13 @@ if (grepl("\\.zip$", input_counts_path, ignore.case = TRUE)) {
 cols_for_cond <- snakemake@params[["counts_cols"]]
 
 # Define conditions in each arm
-cond_df <- data.frame(Colname = colnames(counts[,cols_for_cond]),
-                      Samplename = gsub("\\.R.*", "", colnames(counts[,cols_for_cond])),
-                      Replicate = gsub(".*\\.","", colnames(counts[,cols_for_cond])))
-                      
+cond_df <- data.frame(Colname = colnames(counts[, cols_for_cond]),
+                      Samplename = gsub("\\.R.*", "", colnames(counts[, cols_for_cond])),
+                      Replicate = gsub(".*\\.", "", colnames(counts[, cols_for_cond])))
+
 # Log: columns used for condition parsing
 message(sprintf("[%s] Columns used for conditions: %s", Sys.time(), 
-        paste(colnames(counts)[cols_for_cond], collapse=", ")))
+        paste(colnames(counts)[cols_for_cond], collapse = ", ")))
 
 # Identify individual sgRNAs which have low representation at T0 (med <= threshold)
 message(sprintf("[%s] Starting filt_low_representation (filtersamp=T0, threshold=%s)",

@@ -7,7 +7,9 @@ source("scripts/r_precise_io.R")
 if (exists("snakemake") && !is.null(snakemake@log) && length(snakemake@log) > 0) {
   source("scripts/dual_logging.R")
   .dual_cleanup <- setup_dual_logging(snakemake@log[[1]])
-  on.exit({ .dual_cleanup() }, add = TRUE)
+  on.exit({ 
+    .dual_cleanup() 
+  }, add = TRUE)
 }
 
 infile <- snakemake@input[["input_scores"]]
@@ -18,7 +20,8 @@ message(sprintf("[%s] call_hits.R starting; infile=%s, outfile=%s",
 
 scores <- NULL
 if (!is.null(snakemake@input[["input_discriminant_workspace"]])) {
-  message(sprintf("[%s] Loading discriminant workspace: %s", Sys.time(), snakemake@input[["input_discriminant_workspace"]]))
+  message(sprintf("[%s] Loading discriminant workspace: %s", 
+                  Sys.time(), snakemake@input[["input_discriminant_workspace"]]))
   disc_ws <- load_workspace(snakemake@input[["input_discriminant_workspace"]])
   validate_workspace(disc_ws, c("gene_gis_var"))
   scores <- disc_ws$gene_gis_var
@@ -31,7 +34,7 @@ message(sprintf("[%s] Using discriminant column: %s", Sys.time(), discr_col))
 
 # threshold parameter (quantile)
 hit_threshold <- as.numeric(snakemake@params[["threshold"]])
-if(is.na(hit_threshold) || hit_threshold < 0 || hit_threshold > 1){
+if (is.na(hit_threshold) || hit_threshold < 0 || hit_threshold > 1) {
   stop("hit_threshold must be a numeric between 0 and 1 (inclusive), e.g. 0.995)")
 }
 message(sprintf("[%s] Using quantile threshold: %s", Sys.time(), hit_threshold))
