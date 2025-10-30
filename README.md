@@ -12,12 +12,12 @@ Data presented in our manuscript, along with data from two other manuscripts, ar
 
 - Snakemake (recommended installed in a conda environment).
 - R (with tidyverse packages such as `readr`, `dplyr`, `tidyr`) available to the R scripts.
-- Conda (recommended) or other environment manager to create reproducible environments. Environment YAML is under `workflow/envs/`.
+- Conda (recommended) or other environment manager to create reproducible environments. Environment YAML for establishing the same conda environment used in our manuscript is under `workflow/envs/`.
 
 
 ## Layout
 
-- `config/` - configuration files (primary: `config.yaml`).
+- `config/` - configuration file (primary: `config.yaml`).
 - `workflow/data` - counts files and metadata from Screen 2022 and Screen 2023
 - `workflow/Snakefile` - main Snakemake workflow entrypoint.
 - `workflow/rules/` - Snakemake rule files.
@@ -91,6 +91,8 @@ This pipeline accepts compressed counts files in ZIP or TSV format for the initi
 
 ## Logs and troubleshooting
 
+- Rule-level logs are written when a rule declares a `log:` path. This pipeline writes logs to `outputs/logs/` with a name matching the rule. R scripts will redirect stdout and messages to the Snakemake-provided `log` file where available. Logging files are descriptive and contain some debugging information as well as summaries.
+- This pipeline supports dual logging, where messages are simultaneously sent to stdout as well as the indicated log file. This is helpful for monitoring workflow progress; however, if snakemake was invoked with multiple cores, messages from all cores print to stdout without indication of which job each message belongs to and messages can sometimes interrupt each other. Individual log files are deconvoluted and allow progress of parallel jobs to be monitored independently. 
 - If you have trouble establishing the conda environment, please ensure that your institution has access to the requested channels and change them as needed.
 - If you have trouble establishing the conda environment using the full provided YAML, an alternate YAML is available (`workflow/envs/smk-env-no-r.yaml`) which does not specify installation of any R packages, just a base R version. Once that environment has been made, you can activate it, open R, and install depedencies:
 
@@ -105,7 +107,6 @@ install.packages(c("readr", "dplyr", "data.table", "broom", "ggplot2", "ggrepel"
 q() #no need to save workspace
 ```
 
-- Rule-level logs are written when a rule declares a `log:` path. This pipeline writes logs to `outputs/logs/` with a name matching the rule. R scripts will redirect stdout and messages to the Snakemake-provided `log` file where available. Logging files are descriptive and contain some debugging information as well as summaries.
 - To test an R script interactively, you can construct a small wrapper that sets a `snakemake` list with `input`, `output`, `params` and `log` entries.
 
 

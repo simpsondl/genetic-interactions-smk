@@ -403,28 +403,28 @@ assess_sgcscore_variance <- function(congis, genegis){
       sel_idx <- (tmp$PseudogeneCombinationID == i) | tmp$is_XNT
     }
 
-    if(!any(sel_idx)) next
+    if (!any(sel_idx)) next
     tmp2 <- tmp[sel_idx, ]
     # Exclude identical constructs
     if (nrow(tmp2) == 0) next
     tmp2 <- tmp2[tmp2$Identical == FALSE, ]
     if (nrow(tmp2) == 0) next
 
-    testdist <- tmp2$PseudogeneCombinationID == i
-    if(length(unique(testdist)) < 2) next
+    tmp2$testdist <- tmp2$PseudogeneCombinationID == i
+    if(length(unique(tmp2$testdist)) < 2) next
 
     # Check group sizes before running Wilcoxon test
-    group_sizes <- table(tmp$TestDist)
+    group_sizes <- table(tmp2$testdist)
     if (any(group_sizes < 1)) {
       pval <- NA_real_
     } else {
-      wt <- try(wilcox.test(GI.z ~ TestDist, data = tmp), silent = TRUE)
-      pval <- if(inherits(wt, "try-error")) NA_real_ else wt$p.value
+      wt <- try(wilcox.test(GI.z ~ testdist, data = tmp2), silent = TRUE)
+      pval <- if (inherits(wt, "try-error")) NA_real_ else wt$p.value
     }
 
     var_p[k] <- pval
-    var_n_nt[k] <- sum(!testdist)
-    var_n_test[k] <- sum(testdist)
+    var_n_nt[k] <- sum(!tmp2$testdist)
+    var_n_test[k] <- sum(tmp2$testdist)
   }
 
   n_computed <- sum(!is.na(dt_gen$Variance.p))

@@ -18,12 +18,4 @@ rule all:
 
 include: "rules/preprocess.smk"
 include: "rules/calculate_genetic_interaction_scores.smk"
-#include: "rules/precision_pipeline.smk"
 include: "rules/additional_analyses.smk"
-
-# Prefer the consolidated high-precision pipeline when outputs are ambiguous
-# ruleorder: compute_full_gi_pipeline_precision > compute_genetic_interaction_scores
-# ruleorder: compute_full_gi_pipeline_precision > calculate_gene_level_scores
-# ruleorder: compute_full_gi_pipeline_precision > calculate_discriminant_scores
-# ruleorder: compute_full_gi_pipeline_precision > call_hits
-
