@@ -88,6 +88,9 @@ This pipeline accepts compressed counts files in ZIP or TSV format for the initi
 - A plain TSV: `data/counts/{screen}_raw_counts.tsv`, or
 - A ZIP file: `data/counts/{screen}_raw_counts.zip` which contains one or more files; the scripts will look for the first entry matching `_raw_counts.tsv` (case-insensitive) and read it.
 
+## High-precision I/O
+
+If intermediate files are written to and read from text files, some information can become lost and very small differences in computed scores and discriminants could result from what is effectively a loss of precision. To counter this, the pipeline establishes and uses a set of helper functions (`r_precise_io.R`) to save and load workspaces between rules in the latter half of the pipeline (calculating genetic interaction scores onward). A test function is implemented to ensure that precision is maintained on saving and loading. These workspaces are saved alongside text files with the same information, and are cleaned up by the pipeline once they are no longer needed.
 
 ## Logs and troubleshooting
 
