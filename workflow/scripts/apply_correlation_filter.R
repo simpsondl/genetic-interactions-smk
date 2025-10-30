@@ -7,7 +7,9 @@ source("scripts/helper_functions.R")
 if (exists("snakemake") && !is.null(snakemake@log) && length(snakemake@log) > 0) {
   source("scripts/dual_logging.R")
   .dual_cleanup <- setup_dual_logging(snakemake@log[[1]])
-  on.exit({ .dual_cleanup() }, add = TRUE)
+  on.exit({ 
+    .dual_cleanup() 
+  }, add = TRUE)
 }
 
 raw_phenotypes <- read_tsv(snakemake@input[["input_phenotypes"]])
@@ -45,9 +47,9 @@ message(sprintf("[%s] Number of Gamma sgRNAs failing correlation: %d", Sys.time(
 message(sprintf("[%s] Number of Tau sgRNAs failing correlation: %d", Sys.time(), length(nocorr_filt[[3]])))
 
 # show first few failing sgRNAs for quick inspection
-if(length(nocorr_filt[[2]]) > 0) message(sprintf("[%s] Example Gamma failures: %s", 
+if (length(nocorr_filt[[2]]) > 0) message(sprintf("[%s] Example Gamma failures: %s", 
                                                Sys.time(), paste(head(nocorr_filt[[2]], 5), collapse = ", ")))
-if(length(nocorr_filt[[3]]) > 0) message(sprintf("[%s] Example Tau failures: %s", 
+if (length(nocorr_filt[[3]]) > 0) message(sprintf("[%s] Example Tau failures: %s", 
                                                Sys.time(), paste(head(nocorr_filt[[3]], 5), collapse = ", ")))
 
 # Pull out filteredphenotypes for interaction scores
@@ -74,8 +76,11 @@ to_filt$Flag[(to_filt$FirstPosition %in% nocorr_filt[[3]] |
              is.na(to_filt$Flag)] <- "No correlation - Tau phenotype - no tGI scores"
 
 # Summarize flags after correlation filter
-flag_summary <- to_filt %>% mutate(Flag = ifelse(is.na(Flag), "NOT_FLAGGED", Flag)) %>%
-  group_by(Flag) %>% summarise(n = n()) %>% arrange(desc(n))
+flag_summary <- to_filt %>% 
+                  mutate(Flag = ifelse(is.na(Flag), "NOT_FLAGGED", Flag)) %>%
+                  group_by(Flag) %>% 
+                  summarise(n = n()) %>% 
+                  arrange(desc(n))
 message(sprintf("[%s] Flag summary after correlation filter:\n%s", 
                 Sys.time(), paste(apply(flag_summary, 1, function(r) paste0(r[1], ": ", r[2])), collapse = "\n")))
 

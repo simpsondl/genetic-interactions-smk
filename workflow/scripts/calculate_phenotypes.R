@@ -58,7 +58,7 @@ message(sprintf("[%s] calculate_averaged_phenotypes returned %d rows", Sys.time(
 
 # Calculate single sgRNA phenotypes
 message(sprintf("[%s] Starting calculate_single_sgRNA_phenotypes", Sys.time()))
-single_pheno <- calculate_single_sgRNA_phenotypes(raw_phenotypes)
+single_pheno <- calculate_single_sgrna_phenotypes(raw_phenotypes)
 message(sprintf("[%s] calculate_single_sgRNA_phenotypes returned %d rows", Sys.time(), nrow(single_pheno)))
 
 # Save phenotype tables

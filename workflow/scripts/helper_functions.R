@@ -134,7 +134,7 @@ calculate_averaged_phenotypes <- function(phenos) {
 ### ### phenos - output from calculate_phenotypes function
 ### Outputs:
 ### ### df containing single sgRNA phenotypes by replicate
-calculate_single_sgRNA_phenotypes <- function(phenos) {
+calculate_single_sgrna_phenotypes <- function(phenos) {
   # Create dataframe for saving results
   single_pheno <- data.frame("sgRNA.ID" = unique(c(phenos$FirstPosition, phenos$SecondPosition)), 
                              "Gamma.OI.R1" = 0, 
@@ -148,7 +148,7 @@ calculate_single_sgRNA_phenotypes <- function(phenos) {
                              "Rho.OI.Avg" = 0,
                              "N" = 0)
   
-  for(i in seq_len(nrow(single_pheno))){
+  for (i in seq_len(nrow(single_pheno))){
     if (i %% 100 == 0) {
             progress_pct <- round((i / nrow(single_pheno)) * 100, 1)
             message(sprintf("[%s] Processing sgRNA %d/%d (%s percent) - ID: %s", 
@@ -156,13 +156,13 @@ calculate_single_sgRNA_phenotypes <- function(phenos) {
         }
 
     # Handle non-targeting case
-    if(grepl("non-targeting",single_pheno$sgRNA.ID[i])) {
+    if (grepl("non-targeting", single_pheno$sgRNA.ID[i])) {
       # Extract all non-targeting guide combinations with desired non-targeting guide in position A or B
       # If this is not handled explicitly, will aggregate all NT guides into a glob
       tmp <- phenos[(phenos$FirstPosition == single_pheno$sgRNA.ID[i] &
                                 phenos$SecondPosition %in% unique(phenos$FirstPosition[phenos$Category == "NT+NT"])) | 
                                (phenos$SecondPosition == single_pheno$sgRNA.ID[i] &
-                                  phenos$FirstPosition %in% unique(phenos$FirstPosition[phenos$Category == "NT+NT"])),]
+                                  phenos$FirstPosition %in% unique(phenos$FirstPosition[phenos$Category == "NT+NT"])), ]
       single_pheno$Gamma.OI.R1[i] <- mean(tmp$Gamma.R1)
       single_pheno$Gamma.OI.R2[i] <- mean(tmp$Gamma.R2)
       single_pheno$Gamma.OI.Avg[i] <- mean(tmp$Gamma.Avg)
@@ -180,7 +180,7 @@ calculate_single_sgRNA_phenotypes <- function(phenos) {
       tmp <- phenos[(phenos$FirstPosition == single_pheno$sgRNA.ID[i] | 
                       phenos$SecondPosition == single_pheno$sgRNA.ID[i]) & 
                     (phenos$FirstPosition %in% unique(phenos$FirstPosition[phenos$Category == "NT+NT"]) | 
-                      phenos$SecondPosition %in% unique(phenos$FirstPosition[phenos$Category == "NT+NT"])),]
+                      phenos$SecondPosition %in% unique(phenos$FirstPosition[phenos$Category == "NT+NT"])), ]
       single_pheno$Gamma.OI.R1[i] <- mean(tmp$Gamma.R1)
       single_pheno$Gamma.OI.R2[i] <- mean(tmp$Gamma.R2)
       single_pheno$Gamma.OI.Avg[i] <- mean(tmp$Gamma.Avg)
@@ -207,13 +207,13 @@ calculate_single_sgRNA_phenotypes <- function(phenos) {
 ### ### ### sgRNA ids below threshold, gamma phenotypes
 ### ### ### sgRNA ids below threshold, tau phenotypes
 ### ### ### sgRNA ids below threshold, rho phenotypes
-filt_nocorrelation <- function(combphenos, singlephenos, filterthresh = 0.25){
+filt_nocorrelation <- function(combphenos, singlephenos, filterthresh = 0.25) {
   cors <- data.frame(sgRNA.ID = singlephenos$sgRNA.ID,
                      Gamma.OI.Correlation = NA,
                      Tau.OI.Correlation = NA,
                      Rho.OI.Correlation = NA)
   
-  for(i in singlephenos$sgRNA.ID){
+  for (i in singlephenos$sgRNA.ID){
     tmp <- combphenos[combphenos$SecondPosition == i, c(colnames(combphenos)[1:9],
                                                       "Gamma.OI.Avg", "Tau.OI.Avg", "Rho.OI.Avg")]
     tmp <- merge(tmp, singlephenos[, c("sgRNA.ID", "Gamma.OI.Avg", "Tau.OI.Avg", "Rho.OI.Avg")],
@@ -232,22 +232,22 @@ filt_nocorrelation <- function(combphenos, singlephenos, filterthresh = 0.25){
 ### Function for calculating interaction scores
 ### Inputs:
 ### ### query - sgRNA ID to calculate GI scores for
-### ### singlepheno.df - filtered output from calculate_single_sgRNA_phenotypes and filt_nocorrelation
-### ### pairpheno.df - filtered output from calculate_phenotypes and filt_nocorrelation
+### ### singlepheno_df - filtered output from calculate_single_sgRNA_phenotypes and filt_nocorrelation
+### ### pairpheno_df - filtered output from calculate_phenotypes and filt_nocorrelation
 ### ### phenocol - column name that contains the phenotypes to calculate GI scores from
 ### Outputs:
 ### ### list containing three elements, in order:
 ### ### ### df with all called interaction scores
 ### ### ### a vector containing expected GI scores determined from the model
 ### ### ### the model that was built
-compute_gis <- function(query, singlepheno.df, pairpheno.df, phenocol){
+compute_gis <- function(query, singlepheno_df, pairpheno_df, phenocol) {
   ### Get the single sgRNA phenotypes
-  tmp.data <- data.frame(query = query, 
-                         sgRNA.id = singlepheno.df$sgRNA.ID, 
-                         single = singlepheno.df[,phenocol])
-  colnames(tmp.data)[3] <- "single"
+  tmp_data <- data.frame(query = query, 
+                         sgRNA.id = singlepheno_df$sgRNA.ID, 
+                         single = singlepheno_df[, phenocol])
+  colnames(tmp_data)[3] <- "single"
   ### Merge single with interaction phenotypes
-  tmp.data.merge <- merge(tmp.data, pairpheno.df[pairpheno.df$SecondPosition == query, 
+  tmp_data_merge <- merge(tmp_data, pairpheno_df[pairpheno_df$SecondPosition == query, 
                                                  c("ConstructID",  "GuideCombinationID", "Identical",
                                                    "FirstPseudogene", "SecondPseudogene", "PseudogeneCombinationID",
                                                    "Orientation", "GeneCombinationID", "Category",
@@ -255,45 +255,46 @@ compute_gis <- function(query, singlepheno.df, pairpheno.df, phenocol){
                           by.x = "sgRNA.id", by.y = "FirstPosition", all.x = TRUE)
   
   ### Identify control combinations
-  tmp.data.merge$Control <- grepl("non-targeting", tmp.data.merge$sgRNA.id)
+  tmp_data_merge$Control <- grepl("non-targeting", tmp_data_merge$sgRNA.id)
   
   ### Remove any missing information
-  tmp.data.merge <- tmp.data.merge[!is.na(tmp.data.merge[,phenocol]),]
+  tmp_data_merge <- tmp_data_merge[!is.na(tmp_data_merge[, phenocol]), ]
   
-  if(nrow(tmp.data.merge) == 0){
+  if (nrow(tmp_data_merge) == 0) {
     return(NA)
   }
+
   try({
     ### Fit the model
-    lm.fit <- lm(as.formula(paste0(phenocol," ~ single + I(single^2)")), data = tmp.data.merge)
+    lm_fit <- lm(as.formula(paste0(phenocol, " ~ single + I(single^2)")), data = tmp_data_merge)
     
     ### Generate points for plotting the fit
-    single.pred <- seq(-.35, .05, .01)
-    pair.pred <- predict(lm.fit, list(single = single.pred))
+    single_pred <- seq(-.35, .05, .01)
+    pair_pred <- predict(lm_fit, list(single = single_pred))
     
     ### Define interaction score as observed - expected
-    tmp.data.merge$Expected <- predict(lm.fit, list(single = tmp.data.merge$single))
-    tmp.data.merge$GI <- lm.fit$residuals
+    tmp_data_merge$Expected <- predict(lm_fit, list(single = tmp_data_merge$single))
+    tmp_data_merge$GI <- lm_fit$residuals
     ### z-standardize GIs to negative controls
-    tmp.data.merge$GI.z <- (tmp.data.merge$GI)/sd(tmp.data.merge$GI[tmp.data.merge$Control])
+    tmp_data_merge$GI.z <- (tmp_data_merge$GI) / sd(tmp_data_merge$GI[tmp_data_merge$Control])
     
     ### Order dataframe
-    tmp.data.merge <- tmp.data.merge[order(tmp.data.merge$GI),c("ConstructID", "GuideCombinationID", 
-                                                                "PseudogeneCombinationID", "GeneCombinationID", 
-                                                                "FirstPseudogene", "SecondPseudogene",
-                                                                "Orientation", "Identical", "Category", "Control",
-                                                                "sgRNA.id", "query", "single", phenocol, "Expected",
-                                                                "GI", "GI.z")]
+    tmp_data_merge <- tmp_data_merge[order(tmp_data_merge$GI), c("ConstructID", "GuideCombinationID", 
+                                                                 "PseudogeneCombinationID", "GeneCombinationID", 
+                                                                 "FirstPseudogene", "SecondPseudogene",
+                                                                 "Orientation", "Identical", "Category", "Control",
+                                                                 "sgRNA.id", "query", "single", phenocol, "Expected",
+                                                                 "GI", "GI.z")]
     
     ### Want to label strongest 10 interactions [both buffering and synthetic lethal]
-    n <- nrow(tmp.data.merge)
-    tmp.data.merge$lb <- c(gsub("_.*", "", tmp.data.merge$sgRNA.id[1:(10)]),
-                           rep("", n-20),
-                           gsub("_.*", "", tmp.data.merge$sgRNA.id[(n - 9):n]))
+    n <- nrow(tmp_data_merge)
+    tmp_data_merge$lb <- c(gsub("_.*", "", tmp_data_merge$sgRNA.id[1:(10)]),
+                           rep("", n - 20),
+                           gsub("_.*", "", tmp_data_merge$sgRNA.id[(n - 9):n]))
     
   }, silent = TRUE)
   
-  return(list(tmp.data.merge, pair.pred, lm.fit))
+  return(list(tmp_data_merge, pair_pred, lm_fit))
 }
 
 ### Function for cleanly saving results from compute_gis - used to establish save df's
@@ -304,11 +305,11 @@ compute_gis <- function(query, singlepheno.df, pairpheno.df, phenocol){
 ### ### ### df with gi scores
 ### ### ### df with model coefficients
 ### ### ### df with model statistics
-create_interaction_result_df <- function(gis){
+create_interaction_result_df <- function(gis) {
   all_gis <- gis[[1]]
   ests <- data.frame(sgRNA.ID = i, tidy(gis[[3]]))
-  stats <- data.frame(sgRNA.ID = i,glance(gis[[3]]))
-  
+  stats <- data.frame(sgRNA.ID = i, glance(gis[[3]]))
+
   return(list(all_gis, ests, stats))
 }
 
@@ -320,10 +321,10 @@ create_interaction_result_df <- function(gis){
 ### ### ### df with gi scores
 ### ### ### df with model coefficients
 ### ### ### df with model statistics
-update_interaction_result_df <- function(gis, prev){
+update_interaction_result_df <- function(gis, prev) {
   all_gis <- rbind(prev[[1]], gis[[1]])
-  ests <- rbind(prev[[2]], data.frame(sgRNA.ID = i,tidy(gis[[3]])))
-  stats <- rbind(prev[[3]], data.frame(sgRNA.ID = i,glance(gis[[3]])))
+  ests <- rbind(prev[[2]], data.frame(sgRNA.ID = i, tidy(gis[[3]])))
+  stats <- rbind(prev[[3]], data.frame(sgRNA.ID = i, glance(gis[[3]])))
   
   return(list(all_gis, ests, stats))
 }
@@ -334,13 +335,78 @@ update_interaction_result_df <- function(gis, prev){
 ### ### scorecol - column name that contains the interaction scores to be aggregated to gene level
 ### Outputs:
 ### ### df containing gene-level GI scores
-compute_gene_interaction_scores <- function(gis, scorecol){
-  info.cols <- c("GuideCombinationID", "PseudogeneCombinationID", "Category", "Control", scorecol)
-  gene.gis <- gis[,colnames(gis) %in% info.cols] %>% 
+compute_gene_interaction_scores <- function(gis, scorecol) {
+  info_cols <- c("GuideCombinationID", "PseudogeneCombinationID", "Category", "Control", scorecol)
+  gene_gis <- gis[, colnames(gis) %in% info_cols] %>% 
                 group_by(PseudogeneCombinationID) %>% 
                 mutate(InteractionScore = mean(!!sym(scorecol)), N = n()) %>%
-                select(c(PseudogeneCombinationID, Category, InteractionScore, N)) %>% unique()
-  return(gene.gis)
+                select(c(PseudogeneCombinationID, Category, InteractionScore, N)) %>% 
+                unique()
+  return(gene_gis)
+}
+
+### Helper: safely run a Wilcoxon test with group-size checks
+### Inputs:
+### ### df - data.frame or data.table containing the data to test
+### ### score_col - column name (string) with numeric scores (default "GI.z")
+### ### group_col - column name (string) with grouping indicator (logical/factor) (default "testdist")
+### Output: list(pval = numeric or NA_real_, n_test = integer, n_control = integer)
+safe_wilcox_test <- function(df, score_col = "GI.z", group_col = "testdist") {
+  # Make sure group column is present
+  if (!(group_col %in% colnames(df)) || !(score_col %in% colnames(df))) {
+    return(list(pval = NA_real_, n_test = 0L, n_control = 0L))
+  }
+
+  if (length(unique(df[[group_col]])) < 2) {
+    return(list(pval = NA_real_, n_test = 0L, n_control = 0L))
+  }
+  
+  grp <- df[[group_col]]
+  # Ensure logical vector for counting
+  grp_logical <- as.logical(grp)
+  n_test <- as.integer(sum(grp_logical, na.rm = TRUE))
+  n_control <- as.integer(sum(!grp_logical, na.rm = TRUE))
+
+  # If either group is empty, return NA
+  if (n_test < 1L || n_control < 1L) {
+    return(list(pval = NA_real_, n_test = n_test, n_control = n_control))
+  }
+
+  # Try the test and return NA on error
+  wt <- try(stats::wilcox.test(as.formula(paste0(score_col, " ~ ", group_col)), data = df), silent = TRUE)
+  pval <- if (inherits(wt, "try-error")) NA_real_ else wt$p.value
+  return(list(pval = pval, n_test = n_test, n_control = n_control))
+}
+
+### Helper: build selection index for assess_sgcscore_variance
+### Inputs:
+### ### tmp - data.table subset keyed by SecondPseudogene
+### ### i - PseudogeneCombinationID under test
+### ### gene1, gene2 - pseudogene names
+### Output: logical vector sel_idx of length nrow(tmp)
+build_selection_index <- function(tmp, i, gene1, gene2) {
+  # Determine whether gene names match the NTPG pattern
+  is_ntpg1 <- grepl("NTPG", gene1)
+  is_ntpg2 <- grepl("NTPG", gene2)
+
+  if (is_ntpg1 && is_ntpg2) {
+    sel_idx <- (tmp$PseudogeneCombinationID == i) |
+                  (tmp$is_NTNT & (tmp$SecondPseudogene == gene1 | tmp$SecondPseudogene == gene2))
+  } else if (is_ntpg1) {
+    sel_idx <- (tmp$PseudogeneCombinationID == i) |
+                  (tmp$is_NTNT & tmp$SecondPseudogene == gene1) | (tmp$is_XNT & tmp$SecondPseudogene == gene2)
+  } else if (is_ntpg2) {
+    sel_idx <- (tmp$PseudogeneCombinationID == i) |
+                  (tmp$is_NTNT & tmp$SecondPseudogene == gene2) | (tmp$is_XNT & tmp$SecondPseudogene == gene1)
+  } else {
+    sel_idx <- (tmp$PseudogeneCombinationID == i) | tmp$is_XNT
+  }
+
+  # Ensure a logical vector is always returned
+  if (length(sel_idx) == 0) {
+    return(logical(0))
+  }
+  return(sel_idx)
 }
 
 ### Function for assessing the variance of sgRNA-level GI scores that contribute to gene-level GI scores
@@ -349,7 +415,7 @@ compute_gene_interaction_scores <- function(gis, scorecol){
 ### ### genegis - output from compute_gene_interaction_scores, must have columns Gene1 and Gene2 included
 ### Outputs:
 ### ### df containing GI scores averaged across sgRNA IDs
-assess_sgcscore_variance <- function(congis, genegis){
+assess_sgcscore_variance <- function(congis, genegis) {
   # Purpose: compute a Wilcoxon test comparing GI.z for constructs belonging to the
   # test pseudogene-combination vs relevant control constructs. This refactor
   # uses data.table for faster subsetting and clearer intent.
@@ -375,7 +441,7 @@ assess_sgcscore_variance <- function(congis, genegis){
 
   for (k in seq_along(ids)){
     i <- ids[k]
-    if(k %% 5000 == 0){
+    if (k %% 5000 == 0) {
       message(sprintf("[%s] assess_sgcscore_variance: processed %d/%d combinations; current PseudogeneCombinationID=%s",
                       Sys.time(), k, total_ids, i))
     }
@@ -389,43 +455,28 @@ assess_sgcscore_variance <- function(congis, genegis){
     tmp <- dt_con[J(c(gene1, gene2)), nomatch = 0]
     if (nrow(tmp) == 0) next
 
-    # Apply selection logic but operate on tmp without creating new columns by reference
-    if(grepl("NTPG", gene1) && grepl("NTPG", gene2)){
-      sel_idx <- (tmp$PseudogeneCombinationID == i) | 
-                    (tmp$is_NTNT & (tmp$SecondPseudogene == gene1 | tmp$SecondPseudogene == gene2))
-    } else if(grepl("NTPG", gene1)){
-      sel_idx <- (tmp$PseudogeneCombinationID == i) | 
-                    (tmp$is_NTNT & tmp$SecondPseudogene == gene1) | (tmp$is_XNT & tmp$SecondPseudogene == gene2)
-    } else if(grepl("NTPG", gene2)){
-      sel_idx <- (tmp$PseudogeneCombinationID == i) | 
-                  (tmp$is_NTNT & tmp$SecondPseudogene == gene2) | (tmp$is_XNT & tmp$SecondPseudogene == gene1)
-    } else {
-      sel_idx <- (tmp$PseudogeneCombinationID == i) | tmp$is_XNT
-    }
+    # Build selection index using helper to reduce cyclomatic complexity
+    sel_idx <- build_selection_index(tmp, i, gene1, gene2)
 
     if (!any(sel_idx)) next
     tmp2 <- tmp[sel_idx, ]
-    # Exclude identical constructs
-    if (nrow(tmp2) == 0) next
     tmp2 <- tmp2[tmp2$Identical == FALSE, ]
     if (nrow(tmp2) == 0) next
 
     tmp2$testdist <- tmp2$PseudogeneCombinationID == i
-    if(length(unique(tmp2$testdist)) < 2) next
 
-    # Check group sizes before running Wilcoxon test
-    group_sizes <- table(tmp2$testdist)
-    if (any(group_sizes < 1)) {
-      pval <- NA_real_
-    } else {
-      wt <- try(wilcox.test(GI.z ~ testdist, data = tmp2), silent = TRUE)
-      pval <- if (inherits(wt, "try-error")) NA_real_ else wt$p.value
-    }
-
-    var_p[k] <- pval
-    var_n_nt[k] <- sum(!tmp2$testdist)
-    var_n_test[k] <- sum(tmp2$testdist)
+    # Run Wilcoxon test safely via helper (returns p-value and group sizes)
+    wres <- safe_wilcox_test(tmp2, score_col = "GI.z", group_col = "testdist")
+    var_p[k] <- wres$pval
+    var_n_nt[k] <- wres$n_control
+    var_n_test[k] <- wres$n_test
   }
+
+  # Attach computed results back onto dt_gen using data.table assignment for speed
+  # Use clear column names so downstream code can read: Variance.p, Variance.N.NT, Variance.N.Test
+  dt_gen[, `:=`(Variance.p = var_p,
+                Variance.N.NT = var_n_nt,
+                Variance.N.Test = var_n_test)]
 
   n_computed <- sum(!is.na(dt_gen$Variance.p))
   message(sprintf("[%s] assess_sgcscore_variance: completed; computed p-values for %d/%d combinations",
@@ -435,7 +486,7 @@ assess_sgcscore_variance <- function(congis, genegis){
   return(as.data.frame(dt_gen))
 }
 
-compute_construct_diff_scores <- function(gamma, tau){
+compute_construct_diff_scores <- function(gamma, tau) {
   info_cols <- c(colnames(gamma)[1:12], "GI.z") #meta info columns + GI scores
   pm <- inner_join(gamma[, colnames(gamma) %in% info_cols], 
                    tau[, colnames(tau) %in% info_cols],
