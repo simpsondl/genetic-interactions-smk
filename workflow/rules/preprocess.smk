@@ -37,8 +37,10 @@ rule apply_correlation_filter:
         input_single_sgRNA_phenotypes="../outputs/phenotypes/{screen}_single_sgRNA_phenotypes.tsv",
         input_filter_flags="../outputs/misc_results/{screen}_filter_flags.tsv"
     output:
-        output_filtered_phenotypes="../outputs/phenotypes/{screen}_filtered_phenotypes.tsv",
-        output_filtered_single_sgRNA_phenotypes="../outputs/phenotypes/{screen}_filtered_single_sgRNA_phenotypes.tsv",
+        output_filtered_gamma_phenotypes="../outputs/phenotypes/{screen}_filtered_gamma_phenotypes.tsv",
+        output_filtered_tau_phenotypes="../outputs/phenotypes/{screen}_filtered_tau_phenotypes.tsv",
+        output_filtered_gamma_single_sgRNA_phenotypes="../outputs/phenotypes/{screen}_filtered_gamma_single_sgRNA_phenotypes.tsv",
+        output_filtered_tau_single_sgRNA_phenotypes="../outputs/phenotypes/{screen}_filtered_tau_single_sgRNA_phenotypes.tsv",
         output_full_filter_flags="../outputs/misc_results/{screen}_full_filter_flags.tsv",
         output_correlation_results="../outputs/misc_results/{screen}_correlation_results.tsv"
     log:

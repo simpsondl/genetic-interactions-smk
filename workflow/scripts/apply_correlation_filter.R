@@ -52,28 +52,33 @@ message(sprintf("[%s] Number of Gamma sgRNAs failing correlation: %d", Sys.time(
 message(sprintf("[%s] Number of Tau sgRNAs failing correlation: %d", Sys.time(), length(nocorr_filt[[3]])))
 
 # show first few failing sgRNAs for quick inspection
-if(length(nocorr_filt[[2]])>0) message(sprintf("[%s] Example Gamma failures: %s", 
+if(length(nocorr_filt[[2]]) > 0) message(sprintf("[%s] Example Gamma failures: %s", 
                                                Sys.time(), paste(head(nocorr_filt[[2]], 5), collapse = ", ")))
-if(length(nocorr_filt[[3]])>0) message(sprintf("[%s] Example Tau failures: %s", 
+if(length(nocorr_filt[[3]]) > 0) message(sprintf("[%s] Example Tau failures: %s", 
                                                Sys.time(), paste(head(nocorr_filt[[3]], 5), collapse = ", ")))
 
 # Pull out filteredphenotypes for interaction scores
-phenos_filt <- raw_phenotypes[!(raw_phenotypes$FirstPosition %in% nocorr_filt[[2]]) &
+phenos_gamma_filt <- raw_phenotypes[!(raw_phenotypes$FirstPosition %in% nocorr_filt[[2]]) &
+                                  !(raw_phenotypes$SecondPosition %in% nocorr_filt[[2]]), ]
+single_gamma_pheno_filt <- single_phenotypes[!(single_phenotypes$sgRNA.ID %in% nocorr_filt[[2]]), ]
+
+
+phenos_tau_filt <- raw_phenotypes[!(raw_phenotypes$FirstPosition %in% nocorr_filt[[2]]) &
                                   !(raw_phenotypes$SecondPosition %in% nocorr_filt[[2]]) &
                                     !(raw_phenotypes$FirstPosition %in% nocorr_filt[[3]]) &
-                                      !(raw_phenotypes$SecondPosition %in% nocorr_filt[[3]]),]
-single_pheno_filt <- single_phenotypes[!(single_phenotypes$sgRNA.ID %in% nocorr_filt[[2]]) &
-                                    !(single_phenotypes$sgRNA.ID %in% nocorr_filt[[3]]),]
+                                      !(raw_phenotypes$SecondPosition %in% nocorr_filt[[3]]), ]
+single_tau_pheno_filt <- single_phenotypes[!(single_phenotypes$sgRNA.ID %in% nocorr_filt[[2]]) &
+                                    !(single_phenotypes$sgRNA.ID %in% nocorr_filt[[3]]), ]
 
 # Flag filtered constructs that were not previously filtered
 to_filt$Flag[(to_filt$FirstPosition %in% nocorr_filt[[2]] |
                 to_filt$SecondPosition %in% nocorr_filt[[2]]) &
-             is.na(to_filt$Flag)] <- "No correlation - Gamma phenotype"
+             is.na(to_filt$Flag)] <- "No correlation - Gamma phenotype - no gGI or tGI scores"
 # If an sgRNA was filtered due to having no gamma correlation, that sgRNA will not be flagged if
 # it also had no tau correlation.
 to_filt$Flag[(to_filt$FirstPosition %in% nocorr_filt[[3]] |
                 to_filt$SecondPosition %in% nocorr_filt[[3]]) &
-             is.na(to_filt$Flag)] <- "No correlation - Tau phenotype"
+             is.na(to_filt$Flag)] <- "No correlation - Tau phenotype - no tGI scores"
 
 # Summarize flags after correlation filter
 flag_summary <- to_filt %>% mutate(Flag = ifelse(is.na(Flag), "NOT_FLAGGED", Flag)) %>%
@@ -85,8 +90,11 @@ message(sprintf("[%s] Flag summary after correlation filter:\n%s",
 write_tsv(to_filt, snakemake@output[["output_full_filter_flags"]])
 
 # Save filtered phenotypes to file
-write_tsv(phenos_filt, snakemake@output[["output_filtered_phenotypes"]])
-write_tsv(single_pheno_filt, snakemake@output[["output_filtered_single_sgRNA_phenotypes"]])
+write_tsv(phenos_gamma_filt, snakemake@output[["output_filtered_gamma_phenotypes"]])
+write_tsv(single_gamma_pheno_filt, snakemake@output[["output_filtered_gamma_single_sgRNA_phenotypes"]])
+write_tsv(phenos_tau_filt, snakemake@output[["output_filtered_tau_phenotypes"]])
+write_tsv(single_tau_pheno_filt, snakemake@output[["output_filtered_tau_single_sgRNA_phenotypes"]])
+
 
 # Save correlation results to file
 write_tsv(nocorr_filt[[1]], snakemake@output[["output_correlation_results"]])

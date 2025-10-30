@@ -27,7 +27,7 @@ filt_low_representation <- function(counts, conds, filtersamp, filterthresh = 30
   mean_pos2 <- as.data.frame(lapply(unique(conds$Samplename), 
                                     function(i) {
                                       apply(med_pos2[, colnames(med_pos2) %in% 
-                                                        onds$Colname[conds$Samplename == i]], 
+                                                        conds$Colname[conds$Samplename == i]], 
                                             1, mean)
                                     }))
   # Fix names from lapply
