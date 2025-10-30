@@ -11,6 +11,8 @@ rule compute_gamma_genetic_interaction_scores:
         output_workspace=temp("../outputs/gi_scores/{screen}/construct_scores/gi_workspace_{score,Gamma.*}.rds")
     log:
         "../outputs/logs/{screen}/{screen}_{score,Gamma.*}_compute_genetic_interaction_scores.log"
+    conda:
+        "../envs/smk-env.yaml"
     params:
         screen=lambda wildcards: wildcards.screen,
         score=lambda wildcards: wildcards.score
@@ -30,6 +32,8 @@ rule compute_tau_genetic_interaction_scores:
         output_workspace=temp("../outputs/gi_scores/{screen}/construct_scores/gi_workspace_{score,Tau.*}.rds")
     log:
         "../outputs/logs/{screen}/{screen}_{score,Tau.*}_compute_genetic_interaction_scores.log"
+    conda:
+        "../envs/smk-env.yaml"
     params:
         score=lambda wildcards: wildcards.score,
         screen=lambda wildcards: wildcards.screen
@@ -46,6 +50,8 @@ rule calculate_gene_level_scores:
         output_gene_level_workspace=temp("../outputs/gi_scores/{screen}/gene_combination_scores/gene_level_workspace_{score}.rds")
     log:
         "../outputs/logs/{screen}/{screen}_{score}_calculate_gene_level_scores.log"
+    conda:
+        "../envs/smk-env.yaml"
     params:
         score=lambda wildcards: wildcards.score,
         screen=lambda wildcards: wildcards.screen
@@ -62,6 +68,8 @@ rule calculate_discriminant_scores:
         output_discriminant_workspace=temp("../outputs/gi_scores/{screen}/discriminant_scores/discriminant_workspace_{score}.rds")
     log:
         "../outputs/logs/{screen}/{screen}_{score}_calculate_discriminant_scores.log"
+    conda:
+        "../envs/smk-env.yaml"
     params:
         score=lambda wildcards: wildcards.score,
         screen=lambda wildcards: wildcards.screen
@@ -82,6 +90,8 @@ rule calculate_differential_scores:
         output_diff_workspace=temp("../outputs/gi_scores/{screen}/differential_scores/diff_scores_workspace_{rep}.rds")
     log:
         "../outputs/logs/{screen}/{screen}_{rep}_calculate_differential_scores.log"
+    conda:
+        "../envs/smk-env.yaml"
     params:
         rep=lambda wildcards: wildcards.rep,
         screen=lambda wildcards: wildcards.screen
@@ -97,6 +107,8 @@ rule call_hits:
         output_hits_workspace=temp("../outputs/gi_scores/{screen}/discriminant_scores/hits_workspace_{score}.rds")
     log:
         "../outputs/logs/{screen}/{screen}_{score}_call_hits.log"
+    conda:
+        "../envs/smk-env.yaml"
     params:
         score=lambda wildcards: wildcards.score,
         screen=lambda wildcards: wildcards.screen,
@@ -113,6 +125,8 @@ rule call_differential_hits:
         output_diff_hits_workspace=temp("../outputs/gi_scores/{screen}/differential_scores/diff_hits_workspace_{rep}.rds")
     log:
         "../outputs/logs/{screen}/{screen}_{rep}_call_differential_hits.log"
+    conda:
+        "../envs/smk-env.yaml"
     params:
         rep=lambda wildcards: wildcards.rep,
         screen=lambda wildcards: wildcards.screen,

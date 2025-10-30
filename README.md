@@ -92,6 +92,18 @@ This pipeline accepts compressed counts files in ZIP or TSV format for the initi
 
 If intermediate files are written to and read from text files, some information can become lost and very small differences in computed scores and discriminants could result from what is effectively a loss of precision. To counter this, the pipeline establishes and uses a set of helper functions (`r_precise_io.R`) to save and load workspaces between rules in the latter half of the pipeline (calculating genetic interaction scores onward). A test function is implemented to ensure that precision is maintained on saving and loading. These workspaces are saved alongside text files with the same information, and are cleaned up by the pipeline once they are no longer needed.
 
+## Integrated package management
+
+Instead of establishing a conda environment and activating it (as outlined in `Quick Start`), this pipeline has conda statements added to each rule so that Snakemake will automatically create needed software environments. This feature can be enabled by executing the pipeline with the `--software-deployment-method conda` option.
+
+```bash
+snakemake --cores 4 \
+--software-deployment-method conda \
+--snakefile workflow/Snakefile \
+--configfile config/config.yaml
+```
+ 
+
 ## Logs and troubleshooting
 
 - Rule-level logs are written when a rule declares a `log:` path. This pipeline writes logs to `outputs/logs/` with a name matching the rule. R scripts will redirect stdout and messages to the Snakemake-provided `log` file where available. Logging files are descriptive and contain some debugging information as well as summaries.
