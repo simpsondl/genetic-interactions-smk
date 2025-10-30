@@ -11,28 +11,33 @@ library(data.table)
 ### ### filterthresh - minimum median representation across all constructs/replicates
 ### Outputs:
 ### ### vector with sgRNA ids to with mean median representation below threshold
-filt_low_representation <- function(counts, conds, filtersamp, filterthresh = 30){
+filt_low_representation <- function(counts, conds, filtersamp, filterthresh = 30) {
   # For each sgRNA in each position, get median count across all matching constructs
   # Expected output: 2 df with rows equal to number of sgRNAs and and 6 measurements across arms/replicates
-  med.pos1 <- counts %>% group_by(FirstPosition) %>% summarise(across(conds$Colname, median))
-  med.pos2 <- counts %>% group_by(SecondPosition) %>% summarise(across(conds$Colname, median))
+  med_pos1 <- counts %>% group_by(FirstPosition) %>% summarise(across(conds$Colname, median))
+  med_pos2 <- counts %>% group_by(SecondPosition) %>% summarise(across(conds$Colname, median))
   # For each sgRNA in each position, calculate mean median coverage per arm
   # Expected output: 2 df with rows equal to number of sgRNAs and 3 measurements across arms
-  mean.pos1 <- as.data.frame(lapply(unique(conds$Samplename), 
-                                    function(i) apply(med.pos1[,colnames(med.pos1) %in% 
-                                                                 conds$Colname[conds$Samplename == i]], 
-                                                      1, mean)))
-  mean.pos2 <- as.data.frame(lapply(unique(conds$Samplename), 
-                                    function(i) apply(med.pos2[,colnames(med.pos2) %in% 
-                                                                 conds$Colname[conds$Samplename == i]], 
-                                                      1, mean)))
+  mean_pos1 <- as.data.frame(lapply(unique(conds$Samplename), 
+                                    function(i) {
+                                      apply(med_pos1[, colnames(med_pos1) %in% 
+                                                        conds$Colname[conds$Samplename == i]], 
+                                            1, mean)
+                                    }))
+  mean_pos2 <- as.data.frame(lapply(unique(conds$Samplename), 
+                                    function(i) {
+                                      apply(med_pos2[, colnames(med_pos2) %in% 
+                                                        onds$Colname[conds$Samplename == i]], 
+                                            1, mean)
+                                    }))
   # Fix names from lapply
-  colnames(mean.pos1) <- unique(conds$Samplename)
-  colnames(mean.pos2) <- unique(conds$Samplename)
+  colnames(mean_pos1) <- unique(conds$Samplename)
+  colnames(mean_pos2) <- unique(conds$Samplename)
   # Set for return, only need pos1 since indexing is identical
-  rownames(mean.pos1) <- med.pos1$FirstPosition
+  rownames(mean_pos1) <- med_pos1$FirstPosition
   # Return sgRNA ids which have mean median representation below threshold
-  return(rownames(mean.pos1[mean.pos1[,filtersamp] <= filterthresh | mean.pos2[,filtersamp] <= filterthresh,]))
+  return(rownames(mean_pos1[mean_pos1[, filtersamp] <= filterthresh | 
+                              mean_pos2[, filtersamp] <= filterthresh, ]))
 }
 
 ### Function for identifying individual sgRNA combinations which are poorly represented
@@ -43,11 +48,11 @@ filt_low_representation <- function(counts, conds, filtersamp, filterthresh = 30
 ### ### filterthresh - minimum median representation across all constructs/replicates
 ### Outputs:
 ### ### vector with sgRNA combination ids to with representation below threshold
-filt_combinations <- function(counts, conds, filtersamp, filterthresh){
+filt_combinations <- function(counts, conds, filtersamp, filterthresh) {
   # Get column indices corresponding to arms to filter
   idx <- which(colnames(counts) %in% conds$Colname[conds$Samplename == filtersamp])
   # Create vector where nonzero entry corresponds to a count below threshold in a relevant arm
-  tmp <- rowSums(counts[,idx] <= filterthresh)
+  tmp <- rowSums(counts[, idx] <= filterthresh)
   # Return guidecombinationids for sgRNA combinations to be filtered
   return(counts$ConstructID[which(tmp != 0)])
 }
@@ -65,38 +70,38 @@ filt_combinations <- function(counts, conds, filtersamp, filterthresh){
 ### ### ### Niraparib Replicate 2
 ### Outputs:
 ### ### df containing gamma, tau, and rho phenotypes for all combinations present
-calculate_phenotypes <- function(counts, conds, pseudocount = 10, normalize = TRUE, doublings){
-  pseudo <- counts[,colnames(counts) %in% conds$Colname] + pseudocount
+calculate_phenotypes <- function(counts, conds, pseudocount = 10, normalize = TRUE, doublings) {
+  pseudo <- counts[, colnames(counts) %in% conds$Colname] + pseudocount
   fracs <- sweep(pseudo, 2, colSums(pseudo), FUN = "/")
-  phenos <- data.frame(Gamma.R1 = log2(fracs$DMSO.R1/fracs$T0.R1),
-                       Gamma.R2 = log2(fracs$DMSO.R2/fracs$T0.R2),
-                       Tau.R1 = log2(fracs$NIRAP.R1/fracs$T0.R1),
-                       Tau.R2 = log2(fracs$NIRAP.R2/fracs$T0.R2),
-                       Rho.R1 = log2(fracs$NIRAP.R1/fracs$DMSO.R1),
-                       Rho.R2 = log2(fracs$NIRAP.R2/fracs$DMSO.R2))
-  phenos <- cbind(counts[,1:13], phenos)
+  phenos <- data.frame(Gamma.R1 = log2(fracs$DMSO.R1 / fracs$T0.R1),
+                       Gamma.R2 = log2(fracs$DMSO.R2 / fracs$T0.R2),
+                       Tau.R1 = log2(fracs$NIRAP.R1 / fracs$T0.R1),
+                       Tau.R2 = log2(fracs$NIRAP.R2 / fracs$T0.R2),
+                       Rho.R1 = log2(fracs$NIRAP.R1 / fracs$DMSO.R1),
+                       Rho.R2 = log2(fracs$NIRAP.R2 / fracs$DMSO.R2))
+  phenos <- cbind(counts[, 1:13], phenos)
   
-  if(normalize){
-    nt.gamma.r1 <- median(phenos$Gamma.R1[phenos$Category == "NT+NT"])
-    nt.gamma.r2 <- median(phenos$Gamma.R2[phenos$Category == "NT+NT"])
-    nt.tau.r1 <- median(phenos$Tau.R1[phenos$Category == "NT+NT"])
-    nt.tau.r2 <- median(phenos$Tau.R2[phenos$Category == "NT+NT"])
-    nt.rho.r1 <- median(phenos$Rho.R1[phenos$Category == "NT+NT"])
-    nt.rho.r2 <- median(phenos$Rho.R2[phenos$Category == "NT+NT"])
-    
-    phenos$Gamma.R1 <- (phenos$Gamma.R1 - nt.gamma.r1)/doublings[1]
-    phenos$Gamma.R2 <- (phenos$Gamma.R2 - nt.gamma.r2)/doublings[2]
-    phenos$Tau.R1 <- (phenos$Tau.R1 - nt.tau.r1)/doublings[3]
-    phenos$Tau.R2 <- (phenos$Tau.R2 - nt.tau.r2)/doublings[4]
-    phenos$Rho.R1 <- (phenos$Rho.R1 - nt.rho.r1)/(doublings[1]-doublings[3])
-    phenos$Rho.R2 <- (phenos$Rho.R2 - nt.rho.r2)/(doublings[2]-doublings[4])
+  if (normalize) {
+    nt_gamma_r1 <- median(phenos$Gamma.R1[phenos$Category == "NT+NT"])
+    nt_gamma_r2 <- median(phenos$Gamma.R2[phenos$Category == "NT+NT"])
+    nt_tau_r1 <- median(phenos$Tau.R1[phenos$Category == "NT+NT"])
+    nt_tau_r2 <- median(phenos$Tau.R2[phenos$Category == "NT+NT"])
+    nt_rho_r1 <- median(phenos$Rho.R1[phenos$Category == "NT+NT"])
+    nt_rho_r2 <- median(phenos$Rho.R2[phenos$Category == "NT+NT"])
+
+    phenos$Gamma.R1 <- (phenos$Gamma.R1 - nt_gamma_r1) / doublings[1]
+    phenos$Gamma.R2 <- (phenos$Gamma.R2 - nt_gamma_r2) / doublings[2]
+    phenos$Tau.R1 <- (phenos$Tau.R1 - nt_tau_r1) / doublings[3]
+    phenos$Tau.R2 <- (phenos$Tau.R2 - nt_tau_r2) / doublings[4]
+    phenos$Rho.R1 <- (phenos$Rho.R1 - nt_rho_r1) / (doublings[1] - doublings[3])
+    phenos$Rho.R2 <- (phenos$Rho.R2 - nt_rho_r2) / (doublings[2] - doublings[4])
   }
-  
-  phenos$Gamma.Avg <- rowMeans(phenos[,c("Gamma.R1", "Gamma.R2")])
-  phenos$Tau.Avg <- rowMeans(phenos[,c("Tau.R1", "Tau.R2")])
-  phenos$Rho.Avg <- rowMeans(phenos[,c("Rho.R1", "Rho.R2")])
+
+  phenos$Gamma.Avg <- rowMeans(phenos[, c("Gamma.R1", "Gamma.R2")])
+  phenos$Tau.Avg <- rowMeans(phenos[, c("Tau.R1", "Tau.R2")])
+  phenos$Rho.Avg <- rowMeans(phenos[, c("Rho.R1", "Rho.R2")])
   # rearranges dataframe to have averages next to individual replicates
-  return(phenos[,c(1:15,20,16,17,21,18,19,22)])
+  return(phenos[, c(1:15, 20, 16, 17, 21, 18, 19, 22)])
 }
 
 ### Function for calculating orientation independent, averaged sgRNA combination phenotypes
@@ -107,18 +112,20 @@ calculate_phenotypes <- function(counts, conds, pseudocount = 10, normalize = TR
 ### ### ### GuideCombinationID with IDs beginning with sgc_
 ### Outputs:
 ### ### df containing orientation-independent phenotypes for all replicates and avg replicate
-calculate_averaged_phenotypes <- function(phenos){
-  orind <- phenos %>% group_by(GuideCombinationID) %>% summarise(Gamma.OI.R1 = mean(Gamma.R1),
-                                                                 Gamma.OI.R2 = mean(Gamma.R2),
-                                                                 Gamma.OI.Avg = mean(Gamma.Avg),
-                                                                 Tau.OI.R1 = mean(Tau.R1),
-                                                                 Tau.OI.R2 = mean(Tau.R2),
-                                                                 Tau.OI.Avg = mean(Tau.Avg),
-                                                                 Rho.OI.R1 = mean(Rho.R1),
-                                                                 Rho.OI.R2 = mean(Rho.R2),
-                                                                 Rho.OI.Avg = mean(Rho.Avg),
-                                                                 N = n())
-  orind <- orind[order(as.numeric(gsub("sgc_","",orind$GuideCombinationID))),]
+calculate_averaged_phenotypes <- function(phenos) {
+  orind <- phenos %>% 
+            group_by(GuideCombinationID) %>% 
+              summarise(Gamma.OI.R1 = mean(Gamma.R1),
+                        Gamma.OI.R2 = mean(Gamma.R2),
+                        Gamma.OI.Avg = mean(Gamma.Avg),
+                        Tau.OI.R1 = mean(Tau.R1),
+                        Tau.OI.R2 = mean(Tau.R2),
+                        Tau.OI.Avg = mean(Tau.Avg),
+                        Rho.OI.R1 = mean(Rho.R1),
+                        Rho.OI.R2 = mean(Rho.R2),
+                        Rho.OI.Avg = mean(Rho.Avg),
+                        N = n())
+  orind <- orind[order(as.numeric(gsub("sgc_", "", orind$GuideCombinationID))), ]
   return(orind)
 }
 
@@ -127,9 +134,9 @@ calculate_averaged_phenotypes <- function(phenos){
 ### ### phenos - output from calculate_phenotypes function
 ### Outputs:
 ### ### df containing single sgRNA phenotypes by replicate
-calculate_single_sgRNA_phenotypes <- function(phenos){
+calculate_single_sgRNA_phenotypes <- function(phenos) {
   # Create dataframe for saving results
-  single.pheno <- data.frame("sgRNA.ID" = unique(c(phenos$FirstPosition, phenos$SecondPosition)), 
+  single_pheno <- data.frame("sgRNA.ID" = unique(c(phenos$FirstPosition, phenos$SecondPosition)), 
                              "Gamma.OI.R1" = 0, 
                              "Gamma.OI.R2" = 0,
                              "Gamma.OI.Avg" = 0,
@@ -141,52 +148,52 @@ calculate_single_sgRNA_phenotypes <- function(phenos){
                              "Rho.OI.Avg" = 0,
                              "N" = 0)
   
-  for(i in 1:nrow(single.pheno)){
+  for(i in seq_len(nrow(single_pheno))){
     if (i %% 100 == 0) {
-            progress_pct <- round((i / nrow(single.pheno)) * 100, 1)
+            progress_pct <- round((i / nrow(single_pheno)) * 100, 1)
             message(sprintf("[%s] Processing sgRNA %d/%d (%s percent) - ID: %s", 
-                            Sys.time(), i, nrow(single.pheno), progress_pct, single.pheno$sgRNA.ID[i]))
+                            Sys.time(), i, nrow(single_pheno), progress_pct, single_pheno$sgRNA.ID[i]))
         }
 
     # Handle non-targeting case
-    if(grepl("non-targeting",single.pheno$sgRNA.ID[i])){
+    if(grepl("non-targeting",single_pheno$sgRNA.ID[i])) {
       # Extract all non-targeting guide combinations with desired non-targeting guide in position A or B
       # If this is not handled explicitly, will aggregate all NT guides into a glob
-      tmp <- phenos[(phenos$FirstPosition == single.pheno$sgRNA.ID[i] &
+      tmp <- phenos[(phenos$FirstPosition == single_pheno$sgRNA.ID[i] &
                                 phenos$SecondPosition %in% unique(phenos$FirstPosition[phenos$Category == "NT+NT"])) | 
-                               (phenos$SecondPosition == single.pheno$sgRNA.ID[i] &
+                               (phenos$SecondPosition == single_pheno$sgRNA.ID[i] &
                                   phenos$FirstPosition %in% unique(phenos$FirstPosition[phenos$Category == "NT+NT"])),]
-      single.pheno$Gamma.OI.R1[i] <- mean(tmp$Gamma.R1)
-      single.pheno$Gamma.OI.R2[i] <- mean(tmp$Gamma.R2)
-      single.pheno$Gamma.OI.Avg[i] <- mean(tmp$Gamma.Avg)
-      single.pheno$Tau.OI.R1[i] <- mean(tmp$Tau.R1)
-      single.pheno$Tau.OI.R2[i] <- mean(tmp$Tau.R2)
-      single.pheno$Tau.OI.Avg[i] <- mean(tmp$Tau.Avg)
-      single.pheno$Rho.OI.R1[i] <- mean(tmp$Rho.R1)
-      single.pheno$Rho.OI.R2[i] <- mean(tmp$Rho.R2)
-      single.pheno$Rho.OI.Avg[i] <- mean(tmp$Rho.Avg)
-      single.pheno$N[i] <- nrow(tmp)
-    }
-    # Handle targeting case
-    else {
+      single_pheno$Gamma.OI.R1[i] <- mean(tmp$Gamma.R1)
+      single_pheno$Gamma.OI.R2[i] <- mean(tmp$Gamma.R2)
+      single_pheno$Gamma.OI.Avg[i] <- mean(tmp$Gamma.Avg)
+      single_pheno$Tau.OI.R1[i] <- mean(tmp$Tau.R1)
+      single_pheno$Tau.OI.R2[i] <- mean(tmp$Tau.R2)
+      single_pheno$Tau.OI.Avg[i] <- mean(tmp$Tau.Avg)
+      single_pheno$Rho.OI.R1[i] <- mean(tmp$Rho.R1)
+      single_pheno$Rho.OI.R2[i] <- mean(tmp$Rho.R2)
+      single_pheno$Rho.OI.Avg[i] <- mean(tmp$Rho.Avg)
+      single_pheno$N[i] <- nrow(tmp)
+    }  else {     
+      # Handle targeting case
       # Extract all combinations with desired targeting guide in position A or B and non-targeting guide in other
       # Easier to do this since we can just grab all non-targeting at once
-      tmp <- phenos[(phenos$FirstPosition == single.pheno$sgRNA.ID[i] | phenos$SecondPosition == single.pheno$sgRNA.ID[i]) & 
-                (phenos$FirstPosition %in% unique(phenos$FirstPosition[phenos$Category == "NT+NT"]) | 
-                   phenos$SecondPosition %in% unique(phenos$FirstPosition[phenos$Category == "NT+NT"])),]
-      single.pheno$Gamma.OI.R1[i] <- mean(tmp$Gamma.R1)
-      single.pheno$Gamma.OI.R2[i] <- mean(tmp$Gamma.R2)
-      single.pheno$Gamma.OI.Avg[i] <- mean(tmp$Gamma.Avg)
-      single.pheno$Tau.OI.R1[i] <- mean(tmp$Tau.R1)
-      single.pheno$Tau.OI.R2[i] <- mean(tmp$Tau.R2)
-      single.pheno$Tau.OI.Avg[i] <- mean(tmp$Tau.Avg)
-      single.pheno$Rho.OI.R1[i] <- mean(tmp$Rho.R1)
-      single.pheno$Rho.OI.R2[i] <- mean(tmp$Rho.R2)
-      single.pheno$Rho.OI.Avg[i] <- mean(tmp$Rho.Avg)
-      single.pheno$N[i] <- nrow(tmp)
+      tmp <- phenos[(phenos$FirstPosition == single_pheno$sgRNA.ID[i] | 
+                      phenos$SecondPosition == single_pheno$sgRNA.ID[i]) & 
+                    (phenos$FirstPosition %in% unique(phenos$FirstPosition[phenos$Category == "NT+NT"]) | 
+                      phenos$SecondPosition %in% unique(phenos$FirstPosition[phenos$Category == "NT+NT"])),]
+      single_pheno$Gamma.OI.R1[i] <- mean(tmp$Gamma.R1)
+      single_pheno$Gamma.OI.R2[i] <- mean(tmp$Gamma.R2)
+      single_pheno$Gamma.OI.Avg[i] <- mean(tmp$Gamma.Avg)
+      single_pheno$Tau.OI.R1[i] <- mean(tmp$Tau.R1)
+      single_pheno$Tau.OI.R2[i] <- mean(tmp$Tau.R2)
+      single_pheno$Tau.OI.Avg[i] <- mean(tmp$Tau.Avg)
+      single_pheno$Rho.OI.R1[i] <- mean(tmp$Rho.R1)
+      single_pheno$Rho.OI.R2[i] <- mean(tmp$Rho.R2)
+      single_pheno$Rho.OI.Avg[i] <- mean(tmp$Rho.Avg)
+      single_pheno$N[i] <- nrow(tmp)
     }
   }
-  return(single.pheno)
+  return(single_pheno)
 }
 
 ### Function for calculating correlations between single and combinatorial phenotypes for all sgRNAs
@@ -357,8 +364,11 @@ assess_sgcscore_variance <- function(congis, genegis){
   # Key by SecondPseudogene so lookups by gene are fast
   data.table::setkey(dt_con, SecondPseudogene)
 
-  # Prepare result columns on dt_gen
-  dt_gen[, `:=`(Variance.p = as.numeric(NA), Variance.N.NT = as.integer(NA), Variance.N.Test = as.integer(NA))]
+  # Prepare result columns on dt_gen (we'll fill vectors and assign once for speed)
+  n_gen <- nrow(dt_gen)
+  var_p <- rep(NA_real_, n_gen)
+  var_n_nt <- integer(n_gen)
+  var_n_test <- integer(n_gen)
 
   ids <- dt_gen$PseudogeneCombinationID
   total_ids <- length(ids)
@@ -377,37 +387,44 @@ assess_sgcscore_variance <- function(congis, genegis){
 
     # Fast subset: get all rows where SecondPseudogene is gene1 or gene2
     tmp <- dt_con[J(c(gene1, gene2)), nomatch = 0]
+    if (nrow(tmp) == 0) next
 
-    # Apply the same selection logic as before but using precomputed flags
+    # Apply selection logic but operate on tmp without creating new columns by reference
     if(grepl("NTPG", gene1) && grepl("NTPG", gene2)){
-      tmp <- tmp[PseudogeneCombinationID == i | 
-                  (is_NTNT & (SecondPseudogene == gene1 | SecondPseudogene == gene2))]
+      sel_idx <- (tmp$PseudogeneCombinationID == i) | 
+                    (tmp$is_NTNT & (tmp$SecondPseudogene == gene1 | tmp$SecondPseudogene == gene2))
     } else if(grepl("NTPG", gene1)){
-      tmp <- tmp[PseudogeneCombinationID == i | 
-                  (is_NTNT & SecondPseudogene == gene1) | (is_XNT & SecondPseudogene == gene2)]
+      sel_idx <- (tmp$PseudogeneCombinationID == i) | 
+                    (tmp$is_NTNT & tmp$SecondPseudogene == gene1) | (tmp$is_XNT & tmp$SecondPseudogene == gene2)
     } else if(grepl("NTPG", gene2)){
-      tmp <- tmp[PseudogeneCombinationID == i | 
-                  (is_NTNT & SecondPseudogene == gene2) | (is_XNT & SecondPseudogene == gene1)]
+      sel_idx <- (tmp$PseudogeneCombinationID == i) | 
+                  (tmp$is_NTNT & tmp$SecondPseudogene == gene2) | (tmp$is_XNT & tmp$SecondPseudogene == gene1)
     } else {
-      tmp <- tmp[PseudogeneCombinationID == i | is_XNT]
+      sel_idx <- (tmp$PseudogeneCombinationID == i) | tmp$is_XNT
     }
 
-    # Exclude identical constructs and mark test/control
-    if (nrow(tmp) == 0) next
-    tmp <- tmp[Identical == FALSE]
-    if (nrow(tmp) == 0) next
-    tmp[, TestDist := PseudogeneCombinationID == i]
+    if(!any(sel_idx)) next
+    tmp2 <- tmp[sel_idx, ]
+    # Exclude identical constructs
+    if (nrow(tmp2) == 0) next
+    tmp2 <- tmp2[tmp2$Identical == FALSE, ]
+    if (nrow(tmp2) == 0) next
 
-    # Need both groups present
-    if (tmp[, length(unique(TestDist))] < 2) next
+    testdist <- tmp2$PseudogeneCombinationID == i
+    if(length(unique(testdist)) < 2) next
 
-    # Wilcoxon test can fail on degenerate data; handle errors gracefully
-    wt <- try(wilcox.test(GI.z ~ TestDist, data = tmp), silent = TRUE)
-    pval <- if(inherits(wt, "try-error")) NA_real_ else wt$p.value
+    # Check group sizes before running Wilcoxon test
+    group_sizes <- table(tmp$TestDist)
+    if (any(group_sizes < 1)) {
+      pval <- NA_real_
+    } else {
+      wt <- try(wilcox.test(GI.z ~ TestDist, data = tmp), silent = TRUE)
+      pval <- if(inherits(wt, "try-error")) NA_real_ else wt$p.value
+    }
 
-    dt_gen[PseudogeneCombinationID == i, Variance.p := pval]
-    dt_gen[PseudogeneCombinationID == i, Variance.N.NT := sum(!tmp$TestDist)]
-    dt_gen[PseudogeneCombinationID == i, Variance.N.Test := sum(tmp$TestDist)]
+    var_p[k] <- pval
+    var_n_nt[k] <- sum(!testdist)
+    var_n_test[k] <- sum(testdist)
   }
 
   n_computed <- sum(!is.na(dt_gen$Variance.p))

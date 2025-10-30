@@ -1,18 +1,13 @@
 library(readr)
 library(dplyr)
 
-# Redirect output/messages to Snakemake log if provided
+source("scripts/r_precise_io.R")
+
+# Dual logging to both console and log file when running under Snakemake
 if (exists("snakemake") && !is.null(snakemake@log) && length(snakemake@log) > 0) {
-  log_file <- snakemake@log[[1]]
-  log_con <- file(log_file, open = "wt")
-  sink(log_con, type = "output")
-  sink(log_con, type = "message")
-  options(warn = 1)
-  on.exit({
-    sink(type = "message")
-    sink(type = "output")
-    close(log_con)
-  }, add = TRUE)
+  source("scripts/dual_logging.R")
+  .dual_cleanup <- setup_dual_logging(snakemake@log[[1]])
+  on.exit({ .dual_cleanup() }, add = TRUE)
 }
 
 infile <- snakemake@input[["input_scores"]]
@@ -21,7 +16,15 @@ outfile <- snakemake@output[["output_hits"]]
 message(sprintf("[%s] call_differential_hits.R starting; infile=%s, outfile=%s", 
                 Sys.time(), infile, outfile))
 
-scores <- read_tsv(infile, show_col_types = FALSE)
+scores <- NULL
+if (!is.null(snakemake@input[["input_diff_workspace"]])) {
+  message(sprintf("[%s] Loading differential workspace: %s", Sys.time(), snakemake@input[["input_diff_workspace"]]))
+  diff_ws <- load_workspace(snakemake@input[["input_diff_workspace"]])
+  validate_workspace(diff_ws, c("differential_discriminant"))
+  scores <- diff_ws$differential_discriminant
+} else {
+  scores <- read_tsv(infile, show_col_types = FALSE)
+}
 
 # Determine discriminant column name (default to Discriminant.score)
 discr_col <- "Discriminant"
@@ -53,3 +56,19 @@ message(sprintf("[%s] Hit summary: %d/%d (%.2f%%)", Sys.time(), n_hits, n_total,
 message(sprintf("[%s] Writing output to %s", Sys.time(), outfile))
 write_tsv(scores, outfile)
 message(sprintf("[%s] call_differential_hits.R completed", Sys.time()))
+
+# Save high-precision differential hits workspace
+diff_hits_ws <- list(
+  meta = list(
+    screen = snakemake@params[["screen"]],
+    rep = snakemake@params[["rep"]],
+    created = Sys.time(),
+    rule = "call_differential_hits",
+    threshold = hit_threshold,
+    quantile = qval
+  ),
+  hits_with_calls = scores
+)
+save_workspace(diff_hits_ws, snakemake@output[["output_diff_hits_workspace"]])
+message(sprintf("[%s] Saved differential hits workspace to %s", 
+                Sys.time(), snakemake@output[["output_diff_hits_workspace"]]))
