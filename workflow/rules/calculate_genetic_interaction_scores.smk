@@ -84,12 +84,12 @@ rule calculate_differential_scores:
         input_tau_workspace="../outputs/gi_scores/{screen}/construct_scores/gi_workspace_Tau.{rep}.rds",
         input_idmap="data/annotations/{screen}_id_to_name_mapping.tsv"
     output:
-        output_differential_scores="../outputs/gi_scores/{screen}/differential_scores/differential_scores_{rep}.tsv",
-        output_gene_differential_scores="../outputs/gi_scores/{screen}/differential_scores/gene_differential_scores_{rep}.tsv",
-        output_discriminant_differential_scores="../outputs/gi_scores/{screen}/differential_scores/discriminant_differential_scores_{rep}.tsv",
-        output_diff_workspace=temp("../outputs/gi_scores/{screen}/differential_scores/diff_scores_workspace_{rep}.rds")
+        output_differential_scores="../outputs/gi_scores/{screen}/construct_scores/all_gis_Nu.{rep}.tsv",
+        output_gene_differential_scores="../outputs/gi_scores/{screen}/gene_combination_scores/gene_combination_scores_Nu.{rep}.tsv",
+        output_discriminant_differential_scores="../outputs/gi_scores/{screen}/discriminant_scores/discriminant_scores_Nu.{rep}.tsv",
+        output_diff_workspace=temp("../outputs/gi_scores/{screen}/discriminant_scores/discriminant_workspace_Nu.{rep}.rds")
     log:
-        "../outputs/logs/{screen}/{screen}_{rep}_calculate_differential_scores.log"
+        "../outputs/logs/{screen}/{screen}_Nu.{rep}_calculate_differential_scores.log"
     conda:
         "../envs/smk-env.yaml"
     params:
@@ -118,13 +118,13 @@ rule call_hits:
 
 rule call_differential_hits:
     input:
-        input_scores="../outputs/gi_scores/{screen}/differential_scores/discriminant_differential_scores_{rep}.tsv",
-        input_diff_workspace="../outputs/gi_scores/{screen}/differential_scores/diff_scores_workspace_{rep}.rds"
+        input_scores="../outputs/gi_scores/{screen}/discriminant_scores/discriminant_scores_Nu.{rep}.tsv",
+        input_diff_workspace="../outputs/gi_scores/{screen}/discriminant_scores/diff_scores_workspace_Nu.{rep}.rds"
     output:
-        output_hits="../outputs/gi_scores/{screen}/differential_scores/differential_hits_{rep}.tsv",
-        output_diff_hits_workspace=temp("../outputs/gi_scores/{screen}/differential_scores/diff_hits_workspace_{rep}.rds")
+        output_hits="../outputs/gi_scores/{screen}/discriminant_scores/discriminant_hits_Nu.{rep}.tsv",
+        output_diff_hits_workspace=temp("../outputs/gi_scores/{screen}/discriminant_scores/hits_workspace_Nu.{rep}.rds")
     log:
-        "../outputs/logs/{screen}/{screen}_{rep}_call_differential_hits.log"
+        "../outputs/logs/{screen}/{screen}_Nu.{rep}_call_differential_hits.log"
     conda:
         "../envs/smk-env.yaml"
     params:
@@ -132,7 +132,7 @@ rule call_differential_hits:
         screen=lambda wildcards: wildcards.screen,
         threshold=config["DIFFERENTIAL_HIT_THRESHOLD"]
     script:
-        "../scripts/call_differential_hits.R"
+        "../scripts/call_hits.R"
 
 ##############################################
 # Wrapper rules to build all scores and hits #
@@ -158,6 +158,6 @@ rule identify_all_hits:
     input:
         lambda wildcards: _expand_hit_targets(wildcards)
 
-rule identify_differential_hits:
-    input:
-        lambda wildcards: _expand_differential_hit_targets(wildcards)
+# rule identify_differential_hits:
+#     input:
+#         lambda wildcards: _expand_differential_hit_targets(wildcards)

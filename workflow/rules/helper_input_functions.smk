@@ -50,7 +50,8 @@ def _expand_differential_score_targets(wc=None):
         raise Exception("Please add a DIFFERENTIAL_SCORES list to config.yaml, e.g. DIFFERENTIAL_SCORES: [OI.R1, OI.R2]")
     targets = []
     for sc in screens:
-        targets += expand("../outputs/gi_scores/{screen}/differential_scores/differential_scores_{rep}.tsv",
+        # differential construct scores (Nu.*) were moved into construct_scores
+        targets += expand("../outputs/gi_scores/{screen}/construct_scores/all_gis_Nu.{rep}.tsv",
                           screen=sc, rep=reps)
     return targets
 
@@ -74,6 +75,17 @@ def _expand_differential_hit_targets(wc=None):
         raise Exception("Please add a DIFFERENTIAL_SCORES list to config.yaml, e.g. DIFFERENTIAL_SCORES: [OI.R1, OI.R2]")
     targets = []
     for sc in screens:
-        targets += expand("../outputs/gi_scores/{screen}/differential_scores/differential_hits_{rep}.tsv",
+        # differential hit outputs are now produced as discriminant_hits_Nu.{rep}.tsv
+        targets += expand("../outputs/gi_scores/{screen}/discriminant_scores/discriminant_hits_Nu.{rep}.tsv",
                           screen=sc, rep=reps)
+    return targets
+
+def _expand_diagnostic_plots(wc=None):
+    screens = config.get("SCREENS")
+    if screens is None:
+        screens = [k.lower().split("_GI_SCORES")[0].lower() for k in config if k.endswith("_GI_SCORES")]
+    targets = []
+    for sc in screens:
+        targets += expand("../outputs/gi_scores/{screen}/clusters/diagnostic_plot_{score}.svg",
+                          screen=sc, score=config.get("PHENOTYPES_TO_CLUSTER"))
     return targets

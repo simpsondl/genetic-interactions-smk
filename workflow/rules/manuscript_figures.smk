@@ -22,9 +22,10 @@ rule plot_figure_1e:
 
 rule plot_figure_2a:
     input:
-        input_nu_r1="../outputs/gi_scores/screen2023/differential_scores/gene_differential_scores_OI.R1.tsv",
-        input_nu_r2="../outputs/gi_scores/screen2023/differential_scores/gene_differential_scores_OI.R2.tsv",
-        input_nu_gene_level="../outputs/gi_scores/screen2023/differential_scores/differential_hits_OI.Avg.tsv"
+        # updated paths: differential outputs are now placed with Nu.* naming under construct/gene/discriminant dirs
+        input_nu_r1="../outputs/gi_scores/screen2023/gene_combination_scores/gene_combination_scores_Nu.OI.R1.tsv",
+        input_nu_r2="../outputs/gi_scores/screen2023/gene_combination_scores/gene_combination_scores_Nu.OI.R2.tsv",
+        input_nu_gene_level="../outputs/gi_scores/screen2023/discriminant_scores/discriminant_hits_Nu.OI.Avg.tsv"
     output:
         output_figure_2a="../outputs/manuscript_figures/figure_2a.png",
         output_figure_2a_labels="../outputs/manuscript_figures/figure_2a_labels.png"
@@ -35,9 +36,9 @@ rule plot_figure_2a:
 
 rule plot_figure_2b:
     input:
-        input_nu_r1="../outputs/gi_scores/screen2023/differential_scores/gene_differential_scores_OI.R1.tsv",
-        input_nu_r2="../outputs/gi_scores/screen2023/differential_scores/gene_differential_scores_OI.R2.tsv",
-        input_nu_gene_level="../outputs/gi_scores/screen2023/differential_scores/differential_hits_OI.Avg.tsv",
+        input_nu_r1="../outputs/gi_scores/screen2023/gene_combination_scores/gene_combination_scores_Nu.OI.R1.tsv",
+        input_nu_r2="../outputs/gi_scores/screen2023/gene_combination_scores/gene_combination_scores_Nu.OI.R2.tsv",
+        input_nu_gene_level="../outputs/gi_scores/screen2023/discriminant_scores/discriminant_hits_Nu.OI.Avg.tsv",
         input_idmap="data/annotations/screen2023_id_to_name_mapping.tsv"
     output:
         output_figure_2b="../outputs/manuscript_figures/figure_2b.png",
@@ -49,7 +50,7 @@ rule plot_figure_2b:
 
 rule plot_figure_2d:
     input:
-        input_nu="../outputs/gi_scores/screen2023/differential_scores/differential_hits_OI.Avg.tsv",
+        input_nu="../outputs/gi_scores/screen2023/discriminant_scores/discriminant_hits_Nu.OI.Avg.tsv",
         input_idmap="data/annotations/screen2023_id_to_name_mapping.tsv"
     output:
         output_figure_2d_svg="../outputs/manuscript_figures/figure_2d.svg"
@@ -62,7 +63,7 @@ rule plot_figure_3a:
     input:
         input_gamma="../outputs/gi_scores/screen2023/discriminant_scores/discriminant_hits_Gamma.OI.Avg.tsv",
         input_tau="../outputs/gi_scores/screen2023/discriminant_scores/discriminant_hits_Tau.OI.Avg.tsv",
-        input_nu="../outputs/gi_scores/screen2023/differential_scores/differential_hits_OI.Avg.tsv",
+        input_nu="../outputs/gi_scores/screen2023/discriminant_scores/discriminant_hits_Nu.OI.Avg.tsv",
         input_idmap="data/annotations/screen2023_id_to_name_mapping.tsv"
     output:
         output_figure_3a="../outputs/manuscript_figures/figure_3a.png"
@@ -75,7 +76,7 @@ rule plot_figure_3b_negative:
     input:
         input_gamma="../outputs/gi_scores/screen2023/discriminant_scores/discriminant_hits_Gamma.OI.Avg.tsv",
         input_tau="../outputs/gi_scores/screen2023/discriminant_scores/discriminant_hits_Tau.OI.Avg.tsv",
-        input_nu="../outputs/gi_scores/screen2023/differential_scores/differential_hits_OI.Avg.tsv",
+        input_nu="../outputs/gi_scores/screen2023/discriminant_scores/discriminant_hits_Nu.OI.Avg.tsv",
         input_idmap="data/annotations/screen2023_id_to_name_mapping.tsv"
     output:
         output_figure_3b="../outputs/manuscript_figures/figure_3b_negative.png"
@@ -89,7 +90,7 @@ rule plot_figure_3b_positive:
     input:
         input_gamma="../outputs/gi_scores/screen2023/discriminant_scores/discriminant_hits_Gamma.OI.Avg.tsv",
         input_tau="../outputs/gi_scores/screen2023/discriminant_scores/discriminant_hits_Tau.OI.Avg.tsv",
-        input_nu="../outputs/gi_scores/screen2023/differential_scores/differential_hits_OI.Avg.tsv",
+        input_nu="../outputs/gi_scores/screen2023/discriminant_scores/discriminant_hits_Nu.OI.Avg.tsv",
         input_idmap="data/annotations/screen2023_id_to_name_mapping.tsv"
     output:
         output_figure_3b="../outputs/manuscript_figures/figure_3b_positive.png"

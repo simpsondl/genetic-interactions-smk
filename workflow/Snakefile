@@ -25,4 +25,5 @@ rule generate_manuscript_figures:
 
 include: "rules/preprocess.smk"
 include: "rules/calculate_genetic_interaction_scores.smk"
+include: "rules/clustering.smk"
 include: "rules/manuscript_figures.smk"
