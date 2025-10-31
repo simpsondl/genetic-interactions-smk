@@ -47,6 +47,56 @@ rule plot_figure_2b:
     script:
         "../scripts/manuscript_figures/plot_figure_2b.R"
 
+rule plot_figure_2d:
+    input:
+        input_nu="../outputs/gi_scores/screen2023/differential_scores/differential_hits_OI.Avg.tsv",
+        input_idmap="data/annotations/screen2023_id_to_name_mapping.tsv"
+    output:
+        output_figure_2d_svg="../outputs/manuscript_figures/figure_2d.svg"
+    log:
+        "../outputs/logs/manuscript_figures/plot_figure_2d.log"
+    script:
+        "../scripts/manuscript_figures/plot_figure_2d.R"
+
+rule plot_figure_3a:
+    input:
+        input_gamma="../outputs/gi_scores/screen2023/discriminant_scores/discriminant_hits_Gamma.OI.Avg.tsv",
+        input_tau="../outputs/gi_scores/screen2023/discriminant_scores/discriminant_hits_Tau.OI.Avg.tsv",
+        input_nu="../outputs/gi_scores/screen2023/differential_scores/differential_hits_OI.Avg.tsv",
+        input_idmap="data/annotations/screen2023_id_to_name_mapping.tsv"
+    output:
+        output_figure_3a="../outputs/manuscript_figures/figure_3a.png"
+    log:
+        "../outputs/logs/manuscript_figures/plot_figure_3a.log"
+    script:
+        "../scripts/manuscript_figures/plot_figure_3a.R"
+
+rule plot_figure_3b_negative:
+    input:
+        input_gamma="../outputs/gi_scores/screen2023/discriminant_scores/discriminant_hits_Gamma.OI.Avg.tsv",
+        input_tau="../outputs/gi_scores/screen2023/discriminant_scores/discriminant_hits_Tau.OI.Avg.tsv",
+        input_nu="../outputs/gi_scores/screen2023/differential_scores/differential_hits_OI.Avg.tsv",
+        input_idmap="data/annotations/screen2023_id_to_name_mapping.tsv"
+    output:
+        output_figure_3b="../outputs/manuscript_figures/figure_3b_negative.png"
+    log:
+        "../outputs/logs/manuscript_figures/plot_figure_3b_negative.log"
+    script:
+        "../scripts/manuscript_figures/plot_figure_3b_negative.R"
+
+
+rule plot_figure_3b_positive:
+    input:
+        input_gamma="../outputs/gi_scores/screen2023/discriminant_scores/discriminant_hits_Gamma.OI.Avg.tsv",
+        input_tau="../outputs/gi_scores/screen2023/discriminant_scores/discriminant_hits_Tau.OI.Avg.tsv",
+        input_nu="../outputs/gi_scores/screen2023/differential_scores/differential_hits_OI.Avg.tsv",
+        input_idmap="data/annotations/screen2023_id_to_name_mapping.tsv"
+    output:
+        output_figure_3b="../outputs/manuscript_figures/figure_3b_positive.png"
+    log:
+        "../outputs/logs/manuscript_figures/plot_figure_3b_positive.log"
+    script:
+        "../scripts/manuscript_figures/plot_figure_3b_positive.R"
 
 # rule cluster_genetic_interaction_scores:
 #     input:
