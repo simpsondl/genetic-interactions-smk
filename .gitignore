@@ -3,4 +3,6 @@
 outputs/*
 outputs/
 workflow/data/counts/*.tsv
+workflow/data/counts/screen2023_raw_counts
+workflow/data/counts/screen2022_raw_counts
 !/.gitignore
