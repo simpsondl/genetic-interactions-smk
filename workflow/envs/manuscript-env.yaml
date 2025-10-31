@@ -1,0 +1,20 @@
+name: manuscript_smk
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.13.9
+  - snakemake=9.12.0
+  - r-base=4.5.1
+  - r-readr=2.1.5
+  - r-data.table=1.17.8
+  - r-dplyr=1.1.4
+  - r-broom=1.0.10
+  - r-ggplot2=4.0.0
+  - r-ggrepel=0.9.6
+  - r-wgcna
+  - r-ggextra
+  - r-svglite
+  - r-reshape2
+  - bioconductor-impute

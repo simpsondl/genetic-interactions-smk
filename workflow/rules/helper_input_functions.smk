@@ -1,5 +1,6 @@
 import os
 
+
 def _choose_counts(wildcards):
     tsv = f"data/counts/{wildcards.screen}_raw_counts.tsv"
     zipf = f"data/counts/{wildcards.screen}_raw_counts.zip"
@@ -8,6 +9,7 @@ def _choose_counts(wildcards):
     if os.path.exists(zipf):
         return zipf
     raise FileNotFoundError(f"Neither {{tsv}} nor {{zipf}} found for screen {wildcards.screen}")
+
 
 def _expand_scores_for_screen(wc=None):
     screens = config.get("SCREENS")
@@ -20,6 +22,7 @@ def _expand_scores_for_screen(wc=None):
                           screen=sc, score=config[f"{sc.upper()}_GI_SCORES"])
     return targets
 
+
 def _expand_gene_level_score_targets(wc=None):
     screens = config.get("SCREENS")
     if screens is None:
@@ -29,6 +32,7 @@ def _expand_gene_level_score_targets(wc=None):
         targets += expand("../outputs/gi_scores/{screen}/gene_combination_scores/gene_combination_scores_{score}.tsv",
                           screen=sc, score=config[f"{sc.upper()}_GI_SCORES"])
     return targets
+
 
 def _expand_discriminant_score_targets(wc=None):
     screens = config.get("SCREENS")
@@ -40,6 +44,7 @@ def _expand_discriminant_score_targets(wc=None):
                           screen=sc, score=config[f"{sc.upper()}_GI_SCORES"])
     return targets
     
+
 def _expand_differential_score_targets(wc=None):
     screens = config.get("SCREENS")
     if screens is None:
@@ -54,6 +59,7 @@ def _expand_differential_score_targets(wc=None):
         targets += expand("../outputs/gi_scores/{screen}/construct_scores/all_gis_Nu.{rep}.tsv",
                           screen=sc, rep=reps)
     return targets
+
 
 def _expand_hit_targets(wc=None):
     screens = config.get("SCREENS")
@@ -71,6 +77,7 @@ def _expand_hit_targets(wc=None):
                               screen=sc, rep=reps)
     return targets
 
+
 def _expand_differential_hit_targets(wc=None):
     screens = config.get("SCREENS")
     if screens is None:
@@ -86,6 +93,7 @@ def _expand_differential_hit_targets(wc=None):
                           screen=sc, rep=reps)
     return targets
 
+
 def _expand_diagnostic_plots(wc=None):
     screens = config.get("SCREENS")
     if screens is None:
@@ -95,26 +103,6 @@ def _expand_diagnostic_plots(wc=None):
         targets += expand("../outputs/gi_scores/{screen}/clusters/diagnostic_plot_{score}.svg",
                           screen=sc, score=config.get("PHENOTYPES_TO_CLUSTER"))
     return targets
-
-def _choose_gi_phenotype_inputs(wildcards):
-    """Return the correct phenotype input paths for a genetic interaction score.
-
-    The function inspects the wildcard `score` and returns a dict mapping the
-    two expected input names to the appropriate files for Gamma vs Tau scores.
-    """
-    sc = wildcards.screen
-    score = str(wildcards.score)
-    if score.startswith("Gamma"):
-        return {
-            "input_orientation_indep_phenotypes": f"../outputs/phenotypes/{sc}_filtered_gamma_phenotypes.tsv",
-            "input_single_sgRNA_phenotypes": f"../outputs/phenotypes/{sc}_filtered_gamma_single_sgRNA_phenotypes.tsv",
-        }
-    if score.startswith("Tau"):
-        return {
-            "input_orientation_indep_phenotypes": f"../outputs/phenotypes/{sc}_filtered_tau_phenotypes.tsv",
-            "input_single_sgRNA_phenotypes": f"../outputs/phenotypes/{sc}_filtered_tau_single_sgRNA_phenotypes.tsv",
-        }
-    raise ValueError(f"Unsupported score wildcard for GI phenotypes: {score}")
 
 
 def _gi_orientation_indep_phenotype(wildcards):

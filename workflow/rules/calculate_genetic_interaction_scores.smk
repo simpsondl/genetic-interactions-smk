@@ -119,7 +119,3 @@ rule compute_all_differential_scores:
 rule identify_all_hits:
     input:
         lambda wildcards: _expand_hit_targets(wildcards)
-
-# rule identify_differential_hits:
-#     input:
-#         lambda wildcards: _expand_differential_hit_targets(wildcards)
