@@ -1,42 +1,22 @@
-rule compute_gamma_genetic_interaction_scores:
+rule compute_genetic_interaction_scores:
     input:
-        input_orientation_indep_phenotypes="../outputs/phenotypes/{screen}_filtered_gamma_phenotypes.tsv",
-        input_single_sgRNA_phenotypes="../outputs/phenotypes/{screen}_filtered_gamma_single_sgRNA_phenotypes.tsv"
+        input_orientation_indep_phenotypes=_gi_orientation_indep_phenotype,
+        input_single_sgRNA_phenotypes=_gi_single_sgRNA_phenotype
     output:
-        # constrain score wildcard to values beginning with 'Gamma'
-        output_dir=directory("../outputs/gi_scores/{screen}/individual_scores/{score,Gamma.*}"),
-        output_all_scores="../outputs/gi_scores/{screen}/construct_scores/all_gis_{score,Gamma.*}.tsv",
-        output_model_estimates="../outputs/gi_scores/{screen}/models/model_estimates_{score,Gamma.*}.tsv",
-        output_model_stats="../outputs/gi_scores/{screen}/models/model_stats_{score,Gamma.*}.tsv",
-        output_workspace=temp("../outputs/gi_scores/{screen}/construct_scores/gi_workspace_{score,Gamma.*}.rds")
+        output_dir=directory("../outputs/gi_scores/{screen}/individual_scores/{score}"),
+        output_all_scores="../outputs/gi_scores/{screen}/construct_scores/all_gis_{score}.tsv",
+        output_model_estimates="../outputs/gi_scores/{screen}/models/model_estimates_{score}.tsv",
+        output_model_stats="../outputs/gi_scores/{screen}/models/model_stats_{score}.tsv",
+        output_workspace=temp("../outputs/gi_scores/{screen}/construct_scores/gi_workspace_{score}.rds")
     log:
-        "../outputs/logs/{screen}/{screen}_{score,Gamma.*}_compute_genetic_interaction_scores.log"
+        "../outputs/logs/{screen}/{screen}_{score}_compute_genetic_interaction_scores.log"
     conda:
         "../envs/smk-env.yaml"
+    wildcard_constraints:
+        score="(Gamma\..*|Tau\..*)"
     params:
         screen=lambda wildcards: wildcards.screen,
         score=lambda wildcards: wildcards.score
-    script:
-        "../scripts/calculate_gi_scores.R"
-
-rule compute_tau_genetic_interaction_scores:
-    input:
-        input_orientation_indep_phenotypes="../outputs/phenotypes/{screen}_filtered_tau_phenotypes.tsv",
-        input_single_sgRNA_phenotypes="../outputs/phenotypes/{screen}_filtered_tau_single_sgRNA_phenotypes.tsv"
-    output:
-        # constrain score wildcard to values beginning with 'Tau' 
-        output_dir=directory("../outputs/gi_scores/{screen}/individual_scores/{score,Tau.*}"),
-        output_all_scores="../outputs/gi_scores/{screen}/construct_scores/all_gis_{score,Tau.*}.tsv",
-        output_model_estimates="../outputs/gi_scores/{screen}/models/model_estimates_{score,Tau.*}.tsv",
-        output_model_stats="../outputs/gi_scores/{screen}/models/model_stats_{score,Tau.*}.tsv",
-        output_workspace=temp("../outputs/gi_scores/{screen}/construct_scores/gi_workspace_{score,Tau.*}.rds")
-    log:
-        "../outputs/logs/{screen}/{screen}_{score,Tau.*}_compute_genetic_interaction_scores.log"
-    conda:
-        "../envs/smk-env.yaml"
-    params:
-        score=lambda wildcards: wildcards.score,
-        screen=lambda wildcards: wildcards.screen
     script:
         "../scripts/calculate_gi_scores.R"
 
@@ -110,27 +90,9 @@ rule call_hits:
     conda:
         "../envs/smk-env.yaml"
     params:
+        threshold=lambda wildcards: config["DIFFERENTIAL_HIT_THRESHOLD"] if str(wildcards.score).startswith("Nu") else config["HIT_THRESHOLD"],
         score=lambda wildcards: wildcards.score,
-        screen=lambda wildcards: wildcards.screen,
-        threshold=config["HIT_THRESHOLD"]
-    script:
-        "../scripts/call_hits.R"
-
-rule call_differential_hits:
-    input:
-        input_scores="../outputs/gi_scores/{screen}/discriminant_scores/discriminant_scores_Nu.{rep}.tsv",
-        input_diff_workspace="../outputs/gi_scores/{screen}/discriminant_scores/diff_scores_workspace_Nu.{rep}.rds"
-    output:
-        output_hits="../outputs/gi_scores/{screen}/discriminant_scores/discriminant_hits_Nu.{rep}.tsv",
-        output_diff_hits_workspace=temp("../outputs/gi_scores/{screen}/discriminant_scores/hits_workspace_Nu.{rep}.rds")
-    log:
-        "../outputs/logs/{screen}/{screen}_Nu.{rep}_call_differential_hits.log"
-    conda:
-        "../envs/smk-env.yaml"
-    params:
-        rep=lambda wildcards: wildcards.rep,
-        screen=lambda wildcards: wildcards.screen,
-        threshold=config["DIFFERENTIAL_HIT_THRESHOLD"]
+        screen=lambda wildcards: wildcards.screen
     script:
         "../scripts/call_hits.R"
 

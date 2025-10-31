@@ -23,8 +23,16 @@ if (!is.null(snakemake@input[["input_discriminant_workspace"]])) {
   message(sprintf("[%s] Loading discriminant workspace: %s", 
                   Sys.time(), snakemake@input[["input_discriminant_workspace"]]))
   disc_ws <- load_workspace(snakemake@input[["input_discriminant_workspace"]])
-  validate_workspace(disc_ws, c("gene_gis_var"))
-  scores <- disc_ws$gene_gis_var
+  # Workspaces produced by calculate_discriminant_scores.R contain 'gene_gis_var'.
+  # Workspaces produced by calculate_differential_scores.R contain
+  # 'differential_discriminant'. Support both
+  if ("gene_gis_var" %in% names(disc_ws)) {
+    scores <- disc_ws$gene_gis_var
+  } else if ("differential_discriminant" %in% names(disc_ws)) {
+    scores <- disc_ws$differential_discriminant
+  } else {
+    stop("Loaded discriminant workspace does not contain gene_gis_var or differential_discriminant fields")
+  }
 } else {
   scores <- read_tsv(infile, show_col_types = FALSE)
 }
