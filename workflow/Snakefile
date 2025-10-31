@@ -9,13 +9,20 @@ configfile: "../config/config.yaml"
 
 include: "rules/helper_input_functions.smk"
 
-rule all:
+rule process_all_gi_scores_and_hits:
    input:
        lambda wildcards: _expand_discriminant_score_targets(wildcards),
        lambda wildcards: _expand_differential_score_targets(wildcards),
        lambda wildcards: _expand_hit_targets(wildcards),
        lambda wildcards: _expand_differential_hit_targets(wildcards)
 
+rule generate_manuscript_figures:
+    input:
+        "../outputs/manuscript_figures/figure_1d.svg",
+        "../outputs/manuscript_figures/figure_1e.svg",
+        "../outputs/manuscript_figures/figure_2a.png",
+        "../outputs/manuscript_figures/figure_2a_labels.png"
+
 include: "rules/preprocess.smk"
 include: "rules/calculate_genetic_interaction_scores.smk"
-include: "rules/additional_analyses.smk"
+include: "rules/manuscript_figures.smk"

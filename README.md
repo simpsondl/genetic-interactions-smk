@@ -79,7 +79,7 @@ Edit `config/config.yaml` to control which screens and scores are processed and 
 
 ## Expected outputs
 
-If you run the complete pipeline using the parameters in the provided config file, then the pipeline will create a new `outputs` directory and place all associated output files, including logs, there. The complete pipeline takes approximately 3 hours to run on a desktop computer with 16GB RAM and 6 cores, and generates ~10 Gb of data. Ensure that enough space is available before starting the pipeline.
+If you run the complete pipeline using the parameters in the provided config file, then the pipeline will create a new `outputs` directory and place all associated output files, including logs, there. The complete pipeline takes approximately 1 hour to run on a desktop computer with 16GB RAM and 6 cores, and generates ~11 Gb of data. However, when also considering temporary files that are eventually cleaned up, the pipeline generates ~20GB of new files from start to finish. Ensure that enough space is available before starting the pipeline.
 
 ## Support for zipped counts files
 
