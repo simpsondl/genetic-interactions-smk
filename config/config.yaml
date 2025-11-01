@@ -6,6 +6,12 @@
 ### List of screen names (lowercase) to process end-to-end. Example: [screen2022, screen2023]
 SCREENS: [screen2022, screen2023]
 
+### Source of counts data: "manuscript", "counts_only", "counts_metadata"
+COUNTS_SOURCE: "manuscript"
+### Filepath pattern for provided counts-with-metadata files 
+### (used if COUNTS_SOURCE is "counts_metadata")
+COUNTS_FILEPATH_PATTERN: "data/counts/{screen}_counts_with_metadata.tsv"
+
 ### Count filter thresholds
 INDIVIDUAL_SGRNA_MEDIAN_THRESHOLD: 35
 COMBINATION_SGRNA_COUNT_THRESHOLD: 50
@@ -34,3 +40,20 @@ DIFFERENTIAL_HIT_THRESHOLD: 1
 
 ### Clustering parameters
 PHENOTYPES_TO_CLUSTER: ["Gamma.OI.Avg", "Tau.OI.Avg", "Nu.OI.Avg"]
+
+###############################################################################
+###############################################################################
+
+EXPECTED_METADATA_COLUMN_ORDER:
+  - FirstPosition
+  - FirstPseudogene
+  - SecondPosition
+  - SecondPseudogene
+  - ConstructID
+  - GuideCombinationID
+  - PseudogeneCombinationID
+  - PseudogeneCombinationName
+  - Category
+  - Control
+  - Identical
+  - Orientation

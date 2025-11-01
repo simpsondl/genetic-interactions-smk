@@ -9,7 +9,7 @@ rule compute_genetic_interaction_scores:
         output_model_stats="../outputs/gi_scores/{screen}/models/model_stats_{score}.tsv",
         output_workspace=temp("../outputs/gi_scores/{screen}/construct_scores/gi_workspace_{score}.rds")
     log:
-        "../outputs/logs/{screen}/{screen}_{score}_compute_genetic_interaction_scores.log"
+        "../outputs/logs/{screen}/calculate_gi_scores/{screen}_{score}_compute_genetic_interaction_scores.log"
     conda:
         "../envs/smk-env.yaml"
     wildcard_constraints:
@@ -29,7 +29,7 @@ rule calculate_gene_level_scores:
         output_gene_level_scores="../outputs/gi_scores/{screen}/gene_combination_scores/gene_combination_scores_{score}.tsv",
         output_gene_level_workspace=temp("../outputs/gi_scores/{screen}/gene_combination_scores/gene_level_workspace_{score}.rds")
     log:
-        "../outputs/logs/{screen}/{screen}_{score}_calculate_gene_level_scores.log"
+        "../outputs/logs/{screen}/calculate_gi_scores/{screen}_{score}_calculate_gene_level_scores.log"
     conda:
         "../envs/smk-env.yaml"
     params:
@@ -47,7 +47,7 @@ rule calculate_discriminant_scores:
         output_discriminant_scores="../outputs/gi_scores/{screen}/discriminant_scores/discriminant_scores_{score}.tsv",
         output_discriminant_workspace=temp("../outputs/gi_scores/{screen}/discriminant_scores/discriminant_workspace_{score}.rds")
     log:
-        "../outputs/logs/{screen}/{screen}_{score}_calculate_discriminant_scores.log"
+        "../outputs/logs/{screen}/calculate_gi_scores/{screen}_{score}_calculate_discriminant_scores.log"
     conda:
         "../envs/smk-env.yaml"
     params:
@@ -69,7 +69,7 @@ rule calculate_differential_scores:
         output_discriminant_differential_scores="../outputs/gi_scores/{screen}/discriminant_scores/discriminant_scores_Nu.{rep}.tsv",
         output_diff_workspace=temp("../outputs/gi_scores/{screen}/discriminant_scores/discriminant_workspace_Nu.{rep}.rds")
     log:
-        "../outputs/logs/{screen}/{screen}_Nu.{rep}_calculate_differential_scores.log"
+        "../outputs/logs/{screen}/calculate_gi_scores/{screen}_Nu.{rep}_calculate_differential_scores.log"
     conda:
         "../envs/smk-env.yaml"
     params:
@@ -86,7 +86,7 @@ rule call_hits:
         output_hits="../outputs/gi_scores/{screen}/discriminant_scores/discriminant_hits_{score}.tsv",
         output_hits_workspace=temp("../outputs/gi_scores/{screen}/discriminant_scores/hits_workspace_{score}.rds")
     log:
-        "../outputs/logs/{screen}/{screen}_{score}_call_hits.log"
+        "../outputs/logs/{screen}/calculate_gi_scores/{screen}_{score}_call_hits.log"
     conda:
         "../envs/smk-env.yaml"
     params:

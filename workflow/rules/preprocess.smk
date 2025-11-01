@@ -1,10 +1,11 @@
 rule apply_count_filters:
     input:
-        input_counts=_choose_counts
+        input_counts=_choose_counts,
+        validated_counts="../outputs/misc_results/{screen}_counts_validated.txt"
     output:
         output_filter_flags="../outputs/misc_results/{screen,[^_]+}_filter_flags.tsv"
     log:
-        "../outputs/logs/{screen}/{screen}_apply_count_filters.log"
+        "../outputs/logs/{screen}/preprocess/{screen}_apply_count_filters.log"
     conda:
         "../envs/smk-env.yaml"
     params:
@@ -23,7 +24,7 @@ rule calculate_phenotypes:
         output_orientation_indep_phenotypes="../outputs/phenotypes/{screen,[^_]+}_orientation_independent_phenotypes.tsv",
         output_single_sgRNA_phenotypes="../outputs/phenotypes/{screen,[^_]+}_single_sgRNA_phenotypes.tsv"
     log:
-        "../outputs/logs/{screen}/{screen}_calculate_phenotypes.log"
+        "../outputs/logs/{screen}/preprocess/{screen}_calculate_phenotypes.log"
     conda:
         "../envs/smk-env.yaml"
     params:
@@ -48,7 +49,7 @@ rule apply_correlation_filter:
         output_full_filter_flags="../outputs/misc_results/{screen}_full_filter_flags.tsv",
         output_correlation_results="../outputs/misc_results/{screen}_correlation_results.tsv"
     log:
-        "../outputs/logs/{screen}/{screen}_apply_correlation_filter.log"
+        "../outputs/logs/{screen}/preprocess/{screen}_apply_correlation_filter.log"
     conda:
         "../envs/smk-env.yaml"
     params:

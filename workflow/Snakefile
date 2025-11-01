@@ -23,6 +23,7 @@ rule generate_manuscript_figures:
         "../outputs/manuscript_figures/figure_2a.png",
         "../outputs/manuscript_figures/figure_2a_labels.png"
 
+include: "rules/metadata_generation.smk"
 include: "rules/preprocess.smk"
 include: "rules/calculate_genetic_interaction_scores.smk"
 include: "rules/clustering.smk"

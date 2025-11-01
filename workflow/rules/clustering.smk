@@ -5,7 +5,7 @@ rule diagnostic_plot:
     output:
         output_diagnostic_plot="../outputs/gi_scores/{screen}/clusters/diagnostic_plot_{score}.svg"
     log:
-        "../outputs/logs/{screen}/{screen}_{score}_diagnostic_plot.log"
+        "../outputs/logs/{screen}/clustering/{screen}_{score}_diagnostic_plot.log"
     conda:
         "../envs/smk-env.yaml"
     params:
