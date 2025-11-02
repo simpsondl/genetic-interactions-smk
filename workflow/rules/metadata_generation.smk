@@ -18,7 +18,7 @@ rule validate_counts:
     input:
         input_counts=lambda wildcards: _choose_counts(wildcards)
     output:
-        validated_marker=temp("../outputs/misc_results/{screen}_counts_validated.txt")
+        output_validation_marker=temp("../outputs/misc_results/{screen}_counts_validated.txt")
     log:
         "../outputs/logs/{screen}/metadata_generation/{screen}_validate_counts.log"
     conda:

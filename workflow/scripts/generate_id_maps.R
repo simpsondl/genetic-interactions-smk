@@ -101,9 +101,9 @@ message(sprintf("[%s] Generated %d unique sgRNA combination mappings", Sys.time(
 # Add gene names and construct id to counts table
 counts_mapped <- counts %>%
   left_join(id_map, by = c("FirstPosition" = "sgRNA_ID")) %>%
-  rename(Pseudogene1 = Pseudogene_ID) %>%
+  rename(FirstPseudogene = Pseudogene_ID) %>%
   left_join(id_map, by = c("SecondPosition" = "sgRNA_ID")) %>%
-  rename(Pseudogene2 = Pseudogene_ID) %>%
+  rename(SecondPseudogene = Pseudogene_ID) %>%
     left_join(sgrna_combinations_map, 
                 by = c("FirstPosition", "SecondPosition")) %>%
   mutate(ConstructID = paste0("con_", row_number()))
@@ -116,9 +116,9 @@ message(sprintf("[%s] counts_mapped has %d rows and %d columns after merging id 
 ######################################################################
 
 gene_combinations_map <- counts_mapped %>%
-  select(Pseudogene1, Pseudogene2) %>%
-  mutate(PseudogeneA = apply(.[, c("Pseudogene1", "Pseudogene2")], 1, min),
-         PseudogeneB = apply(.[, c("Pseudogene1", "Pseudogene2")], 1, max)) %>%
+  select(FirstPseudogene, SecondPseudogene) %>%
+  mutate(PseudogeneA = apply(.[, c("FirstPseudogene", "SecondPseudogene")], 1, min),
+         PseudogeneB = apply(.[, c("FirstPseudogene", "SecondPseudogene")], 1, max)) %>%
   select(PseudogeneA, PseudogeneB) %>%
   distinct() %>%
   mutate(PseudogeneCombinationID = paste0("pgc_", row_number()),
@@ -129,8 +129,8 @@ message(sprintf("[%s] Generated %d unique pseudogene combination mappings",
 
 # Merge in Pseudogene combination ids
 counts_mapped <- counts_mapped %>%
-  mutate(PseudogeneA = apply(.[, c("Pseudogene1", "Pseudogene2")], 1, min),
-         PseudogeneB = apply(.[, c("Pseudogene1", "Pseudogene2")], 1, max)) %>%
+  mutate(PseudogeneA = apply(.[, c("FirstPseudogene", "SecondPseudogene")], 1, min),
+         PseudogeneB = apply(.[, c("FirstPseudogene", "SecondPseudogene")], 1, max)) %>%
   left_join(gene_combinations_map, by = c("PseudogeneA", "PseudogeneB")) %>%
   select(-PseudogeneA, -PseudogeneB)
 
@@ -143,7 +143,7 @@ counts_mapped <- counts_mapped %>%
     Category = case_when(
       grepl("^non-targeting_", FirstPosition) & grepl("^non-targeting_", SecondPosition) ~ "NT+NT",
       grepl("^non-targeting_", FirstPosition) | grepl("^non-targeting_", SecondPosition) ~ "X+NT",
-      Pseudogene1 == Pseudogene2 ~ "X+X",
+      FirstPseudogene == SecondPseudogene ~ "X+X",
       TRUE ~ "X+Y"
     ),
     Control = grepl("^non-targeting_", FirstPosition) | grepl("^non-targeting_", SecondPosition),
@@ -153,7 +153,7 @@ counts_mapped <- counts_mapped %>%
 
 # Rearrange columns
 counts_mapped <- counts_mapped %>%
-  select(FirstPosition, Pseudogene1, SecondPosition, Pseudogene2,
+  select(FirstPosition, FirstPseudogene, SecondPosition, SecondPseudogene,
          ConstructID, GuideCombinationID, PseudogeneCombinationID, PseudogeneCombinationName,
          Category, Control, Identical, Orientation,
          everything())
@@ -171,7 +171,7 @@ message(sprintf("[%s] Wrote guide combination map to %s (%d rows)",
 write_tsv(gene_combinations_map, snakemake@output[["output_genecombination_map"]])
 message(sprintf("[%s] Wrote gene combination map to %s (%d rows)", 
                 Sys.time(), snakemake@output[["output_genecombination_map"]], nrow(gene_combinations_map)))
-                
+
 write_tsv(id_map, snakemake@output[["output_pseudogene_map"]])
 message(sprintf("[%s] Wrote pseudogene id map to %s (%d rows)", 
         Sys.time(), snakemake@output[["output_pseudogene_map"]], nrow(id_map)))

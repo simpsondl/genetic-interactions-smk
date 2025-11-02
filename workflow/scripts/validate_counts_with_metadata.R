@@ -31,7 +31,7 @@ read_header <- function(path) {
 provided_cols <- read_header(provided_path)
 
 expected_cols <- snakemake@params[["expected_count_columns"]]
-message(sprintf("[%s] Using expected columns from snakemake params (expected_count_columns)",
+message(sprintf("[%s] Using expected columns from snakemake params (EXPECTED_COUNT_COLUMNS)",
                 Sys.time()))
 
 
@@ -70,6 +70,7 @@ message(sprintf("[%s] Validation passed.", Sys.time()))
 
 # Touch the marker output
 out_path <- snakemake@output[["output_validation_marker"]]
-dir.create(dirname(out_path), recursive = TRUE, showWarnings = FALSE)
-writeLines(sprintf("validated: %s\nvalidated_at: %s", provided_path, Sys.time()), con = out_path)
+file_connection <- file(out_path, "w")
+writeLines(sprintf("[%s] validated: %s", Sys.time(), provided_path), con = file_connection)
+close(file_connection)
 message(sprintf("[%s] Wrote validation marker to %s", Sys.time(), out_path))

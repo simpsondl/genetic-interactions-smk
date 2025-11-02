@@ -1,5 +1,164 @@
 library(dplyr)
 
+### Helper: resolve column-name prefixes to column indices
+### Inputs:
+### ### colnames_vec - character vector of column names (e.g. colnames(counts))
+### ### prefixes_param - either a character vector, a single comma-separated string,
+### ###                  or a list (from Snakemake params) of prefixes to match
+### Output: list(indices = integer vector of 1-based column indices, prefixes = character vector)
+resolve_count_prefixes <- function(colnames_vec, prefixes_param) {
+  if (is.null(prefixes_param)) {
+    stop("counts_prefixes not provided")
+  }
+  # normalize to character vector
+  if (!is.character(prefixes_param)) {
+    prefixes <- unlist(prefixes_param)
+  } else if (length(prefixes_param) == 1 && grepl(",", prefixes_param)) {
+    prefixes <- strsplit(prefixes_param, ",")[[1]]
+    prefixes <- trimws(prefixes)
+  } else {
+    prefixes <- prefixes_param
+  }
+
+  if (length(prefixes) == 1) {
+    matches <- startsWith(colnames_vec, prefixes)
+  } else {
+    matches_list <- lapply(prefixes, function(p) startsWith(colnames_vec, p))
+    matches <- Reduce(`|`, matches_list)
+  }
+
+  indices <- which(matches)
+  if (length(indices) == 0) {
+    stop(sprintf("No columns matched prefixes: %s", paste(prefixes, collapse = ",")))
+  }
+
+  message(sprintf("[%s] resolve_count_prefixes: matched columns for prefixes %s: %s", 
+                  Sys.time(), paste(prefixes, collapse = ","), 
+                  paste(colnames_vec[matches], collapse = ", ")))
+
+  return(list(indices = indices, prefixes = prefixes))
+}
+
+### Helper: get doubling value for a given prefix and replicate suffix
+get_doubling_value <- function(doublings, prefix, suf) {
+  
+  val <- NULL
+  
+  if (is.null(doublings)) return(NA)
+  # Expected doubles provided as nested list
+  if (is.list(doublings) && !is.null(doublings[[prefix]])) {
+    val <- doublings[[prefix]][[suf]]
+  }
+  
+  if (is.null(val)) {
+    return(NA)
+  } else {
+    return(as.numeric(val))
+  }
+}
+
+### Helper: compute non-targeting medians per phenotype/replicate
+compute_nt_medians <- function(out, phenotype_prefix_map) {
+  nt_medians <- list()
+  for (ph in names(phenotype_prefix_map)) {
+    nt_medians[[ph]] <- list()
+    rep_cols <- grep(paste0("^", ph, "\\."), colnames(out), value = TRUE)
+    rep_cols <- rep_cols[!grepl("\\.Avg$", rep_cols)]
+    for (cname in rep_cols) {
+      suf <- sub(paste0("^", ph, "\\."), "", cname)
+      nt_medians[[ph]][[suf]] <- median(out[[cname]][out$Category == "NT+NT"], na.rm = TRUE)
+    }
+  }
+  return(nt_medians)
+}
+
+### Helper: apply normalization per-phenotype/replicate using doublings mapping
+normalize_phenotypes <- function(out, phenotype_prefix_map, doublings) {
+  nt_medians <- compute_nt_medians(out, phenotype_prefix_map)
+  for (ph in names(phenotype_prefix_map)) {
+    prefs <- phenotype_prefix_map[[ph]]
+    num_pref <- prefs[1]
+    den_pref <- prefs[2]
+    rep_cols <- grep(paste0("^", ph, "\\."), colnames(out), value = TRUE)
+    rep_cols <- rep_cols[!grepl("\\.Avg$", rep_cols)]
+    for (cname in rep_cols) {
+      suf <- sub(paste0("^", ph, "\\."), "", cname)
+      nt_val <- nt_medians[[ph]][[suf]]
+      if (ph != "Rho") {
+        dval <- get_doubling_value(doublings, num_pref, suf)
+        if (is.na(dval)) {
+          stop(sprintf("[%s] Doubling value not found for %s.%s - update DOUBLINGS to a mapping in config", 
+                       Sys.time(), num_pref, suf))
+        } 
+        
+        out[[cname]] <- (out[[cname]] - nt_val) / dval
+        
+      } else {
+        d_treated <- get_doubling_value(doublings, den_pref, suf)
+        d_basal <- get_doubling_value(doublings, num_pref, suf)
+        if (is.na(d_treated) || is.na(d_basal)) {
+          stop(sprintf("[%s] Doubling values not found for Rho replicate %s (need %s.%s and %s.%s)", 
+                       Sys.time(), suf, den_pref, suf, num_pref, suf))
+        }
+        out[[cname]] <- (out[[cname]] - nt_val) / (d_treated - d_basal)
+      }
+    }
+  }
+  return(out)
+}
+
+### Helper: compute per-phenotype replicate averages (adds/updates *.Avg columns)
+compute_phenotype_averages <- function(df, phenotype_prefix_map) {
+  for (ph in names(phenotype_prefix_map)) {
+    rep_cols <- grep(paste0("^", ph, "\\."), colnames(df), value = TRUE)
+    rep_cols <- rep_cols[!grepl("\\.Avg$", rep_cols)]
+    if (length(rep_cols) > 0) {
+      df[[paste0(ph, ".Avg")]] <- rowMeans(df[, rep_cols, drop = FALSE])
+    }
+  }
+  return(df)
+}
+
+### Helper: identify replicate suffixes and matched column names for numerator/denominator
+### Inputs:
+### ### colnames_vec - character vector of available column names (e.g., conds$Colname)
+### ### num_pref - numerator prefix (e.g., "DMSO")
+### ### den_pref - denominator prefix (e.g., "T0")
+### ### replicates - optional character vector of replicate suffixes to look for (e.g., c("R1","R2"))
+### Output: list(common_suf=character(), matched_num=list or NULL, matched_den=list or NULL)
+identify_replicate_matches <- function(colnames_vec, num_pref, den_pref, replicates = NULL) {
+  num_cols <- colnames_vec[startsWith(colnames_vec, num_pref)]
+  den_cols <- colnames_vec[startsWith(colnames_vec, den_pref)]
+  if (length(num_cols) == 0 || length(den_cols) == 0) {
+    return(list(common_suf = character(0), matched_num = NULL, matched_den = NULL))
+  }
+
+  if (!is.null(replicates)) {
+    matched_num <- list()
+    matched_den <- list()
+    common_suf <- character(0)
+    for (suf in replicates) {
+      # accept optional separators (., _, -) between prefix and suffix
+      num_pattern <- paste0("^", num_pref, "(?:\\.|_|-)?", suf, "$")
+      den_pattern <- paste0("^", den_pref, "(?:\\.|_|-)?", suf, "$")
+      nm <- grep(num_pattern, num_cols, value = TRUE, perl = TRUE)
+      dm <- grep(den_pattern, den_cols, value = TRUE, perl = TRUE)
+      if (length(nm) > 0 && length(dm) > 0) {
+        matched_num[[suf]] <- nm[1]
+        matched_den[[suf]] <- dm[1]
+        common_suf <- c(common_suf, suf)
+      }
+    }
+    return(list(common_suf = common_suf, matched_num = matched_num, matched_den = matched_den))
+  } else {
+    # derive replicate suffixes by removing optional separator after prefix
+    num_suf <- sub(paste0("^", num_pref, "(?:\\.|_|-)?"), "", num_cols)
+    den_suf <- sub(paste0("^", den_pref, "(?:\\.|_|-)?"), "", den_cols)
+    common_suf <- intersect(num_suf, den_suf)
+    return(list(common_suf = common_suf, matched_num = NULL, matched_den = NULL))
+  }
+}
+
 ### Function for identifying individual sgRNAs which are poorly represented
 ### in either position A or position B at T0
 ### Inputs:
@@ -68,38 +227,81 @@ filt_combinations <- function(counts, conds, filtersamp, filterthresh) {
 ### ### ### Niraparib Replicate 2
 ### Outputs:
 ### ### df containing gamma, tau, and rho phenotypes for all combinations present
-calculate_phenotypes <- function(counts, conds, pseudocount = 10, normalize = TRUE, doublings) {
-  pseudo <- counts[, colnames(counts) %in% conds$Colname] + pseudocount
-  fracs <- sweep(pseudo, 2, colSums(pseudo), FUN = "/")
-  phenos <- data.frame(Gamma.R1 = log2(fracs$DMSO.R1 / fracs$T0.R1),
-                       Gamma.R2 = log2(fracs$DMSO.R2 / fracs$T0.R2),
-                       Tau.R1 = log2(fracs$NIRAP.R1 / fracs$T0.R1),
-                       Tau.R2 = log2(fracs$NIRAP.R2 / fracs$T0.R2),
-                       Rho.R1 = log2(fracs$NIRAP.R1 / fracs$DMSO.R1),
-                       Rho.R2 = log2(fracs$NIRAP.R2 / fracs$DMSO.R2))
-  phenos <- cbind(counts[, 1:13], phenos)
-  
-  if (normalize) {
-    nt_gamma_r1 <- median(phenos$Gamma.R1[phenos$Category == "NT+NT"])
-    nt_gamma_r2 <- median(phenos$Gamma.R2[phenos$Category == "NT+NT"])
-    nt_tau_r1 <- median(phenos$Tau.R1[phenos$Category == "NT+NT"])
-    nt_tau_r2 <- median(phenos$Tau.R2[phenos$Category == "NT+NT"])
-    nt_rho_r1 <- median(phenos$Rho.R1[phenos$Category == "NT+NT"])
-    nt_rho_r2 <- median(phenos$Rho.R2[phenos$Category == "NT+NT"])
-
-    phenos$Gamma.R1 <- (phenos$Gamma.R1 - nt_gamma_r1) / doublings[1]
-    phenos$Gamma.R2 <- (phenos$Gamma.R2 - nt_gamma_r2) / doublings[2]
-    phenos$Tau.R1 <- (phenos$Tau.R1 - nt_tau_r1) / doublings[3]
-    phenos$Tau.R2 <- (phenos$Tau.R2 - nt_tau_r2) / doublings[4]
-    phenos$Rho.R1 <- (phenos$Rho.R1 - nt_rho_r1) / (doublings[1] - doublings[3])
-    phenos$Rho.R2 <- (phenos$Rho.R2 - nt_rho_r2) / (doublings[2] - doublings[4])
+calculate_phenotypes <- function(counts, conds, pseudocount = 10, normalize = TRUE,
+                                 doublings = NULL, phenotype_prefix_map = NULL, replicates = NULL,
+                                 compute_avgs = TRUE) {
+  # phenotype_prefix_map should be a named list, e.g.
+  # list(Gamma = c("DMSO","T0"), Tau = c("NIRAP","T0"), Rho = c("NIRAP","DMSO"))
+  if (is.null(phenotype_prefix_map)) {
+    phenotype_prefix_map <- list(Gamma = c("DMSO", "T0"),
+                                 Tau = c("TREATED", "T0"),
+                                 Rho = c("TREATED", "DMSO"))
   }
 
-  phenos$Gamma.Avg <- rowMeans(phenos[, c("Gamma.R1", "Gamma.R2")])
-  phenos$Tau.Avg <- rowMeans(phenos[, c("Tau.R1", "Tau.R2")])
-  phenos$Rho.Avg <- rowMeans(phenos[, c("Rho.R1", "Rho.R2")])
-  # rearranges dataframe to have averages next to individual replicates
-  return(phenos[, c(1:15, 20, 16, 17, 21, 18, 19, 22)])
+  message(sprintf("[%s] calculate_phenotypes: starting on %d rows; cond columns: %s", 
+                  Sys.time(), nrow(counts), paste(conds$Colname, collapse = ", ")))
+
+  pseudo <- counts[, colnames(counts) %in% conds$Colname] + pseudocount
+  fracs <- sweep(pseudo, 2, colSums(pseudo), FUN = "/")
+
+  # initialize phenos with same number of rows as counts
+  phenos <- data.frame(matrix(nrow = nrow(counts), ncol = 0))
+  # For each phenotype (Gamma, Tau, Rho), compute replicate columns based on common suffixes
+  for (ph in names(phenotype_prefix_map)) {
+    prefs <- phenotype_prefix_map[[ph]]
+    if (length(prefs) < 2) stop(sprintf("phenotype_prefix_map entry for %s must contain two prefixes (num,den)", ph))
+    num_pref <- prefs[1]
+    den_pref <- prefs[2]
+
+    # find matching column names within the selected conds columns
+    num_cols <- conds$Colname[startsWith(conds$Colname, num_pref)]
+    den_cols <- conds$Colname[startsWith(conds$Colname, den_pref)]
+    if (length(num_cols) == 0 || length(den_cols) == 0) {
+      stop(sprintf("No columns found for phenotype %s prefixes: %s / %s", ph, num_pref, den_pref))
+    }
+
+    # identify replicate suffixes and matched column names (delegated to helper)
+    match_res <- identify_replicate_matches(conds$Colname, num_pref, den_pref, replicates)
+    common_suf <- match_res$common_suf
+    matched_num <- match_res$matched_num
+    matched_den <- match_res$matched_den
+    if (length(common_suf) == 0) {
+      stop(sprintf("No common replicate suffixes for phenotype %s between %s and %s", ph, num_pref, den_pref))
+    }
+
+    # for each common suffix, compute phenotype replicate column
+    for (suf in common_suf) {
+      # use matched column names when available (handles different separators)
+      if (!is.null(matched_num) && !is.null(matched_num[[suf]])) {
+        num_colname <- matched_num[[suf]]
+      } else {
+        num_colname <- paste0(num_pref, ".", suf)
+      }
+      if (!is.null(matched_den) && !is.null(matched_den[[suf]])) {
+        den_colname <- matched_den[[suf]]
+      } else {
+        den_colname <- paste0(den_pref, ".", suf)
+      }
+      ph_colname <- paste0(ph, ".", suf)
+      phenos[[ph_colname]] <- log2(fracs[[num_colname]] / fracs[[den_colname]])
+    }
+  }
+
+  # combine metadata and computed phenotype columns
+  out <- cbind(counts[, 1:13], phenos)
+
+  if (normalize) {
+    message(sprintf("[%s] Starting normalization step", Sys.time()))
+    out <- normalize_phenotypes(out, phenotype_prefix_map, doublings)
+    message(sprintf("[%s] Normalization complete", Sys.time()))
+  }
+
+  # compute averages optionally (replicate averaging / adding *.Avg columns)
+  if (isTRUE(compute_avgs)) {
+    out <- compute_phenotype_averages(out, phenotype_prefix_map)
+  }
+
+  return(out)
 }
 
 ### Function for calculating orientation independent, averaged sgRNA combination phenotypes
@@ -154,7 +356,7 @@ calculate_single_sgrna_phenotypes <- function(phenos) {
         }
 
     # Handle non-targeting case
-    if (grepl("non-targeting", single_pheno$sgRNA.ID[i])) {
+  if (grepl("non-targeting", single_pheno$sgRNA.ID[i])) {
       # Extract all non-targeting guide combinations with desired non-targeting guide in position A or B
       # If this is not handled explicitly, will aggregate all NT guides into a glob
       tmp <- phenos[(phenos$FirstPosition == single_pheno$sgRNA.ID[i] &

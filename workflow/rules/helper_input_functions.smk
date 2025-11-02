@@ -29,7 +29,7 @@ def _choose_counts(wildcards):
             # fallback to the conventional path
             return f"../outputs/counts/{wildcards.screen}_counts_with_metadata.tsv"
     else:
-        # raw mode (default) -- existing behaviour: prefer TSV then ZIP
+        # manuscript mode (default) -- existing behaviour: prefer TSV then ZIP
         tsv = f"data/counts/{wildcards.screen}_raw_counts.tsv"
         zipf = f"data/counts/{wildcards.screen}_raw_counts.zip"
         if os.path.exists(tsv):
