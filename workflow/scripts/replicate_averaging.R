@@ -1,6 +1,7 @@
 library(readr)
+library(dplyr)
 
-source("scripts/helper_functions.R")
+source("scripts/phenotype_helpers.R")
 
 # Dual logging when run under Snakemake
 if (exists("snakemake") && !is.null(snakemake@log) && length(snakemake@log) > 0) {
@@ -31,8 +32,10 @@ single_pheno <- calculate_single_sgrna_phenotypes(phenos_avg)
 message(sprintf("[%s] Writing final phenotypes to %s", Sys.time(), snakemake@output[["output_phenotypes"]]))
 write_tsv(phenos_avg, snakemake@output[["output_phenotypes"]])
 
-message(sprintf("[%s] Writing orientation-independent phenotypes to %s", Sys.time(), snakemake@output[["output_orientation_indep_phenotypes"]]))
+message(sprintf("[%s] Writing orientation-independent phenotypes to %s", 
+                Sys.time(), snakemake@output[["output_orientation_indep_phenotypes"]]))
 write_tsv(orind, snakemake@output[["output_orientation_indep_phenotypes"]])
 
-message(sprintf("[%s] Writing single-sgRNA phenotypes to %s", Sys.time(), snakemake@output[["output_single_sgRNA_phenotypes"]]))
+message(sprintf("[%s] Writing single-sgRNA phenotypes to %s", 
+                Sys.time(), snakemake@output[["output_single_sgRNA_phenotypes"]]))
 write_tsv(single_pheno, snakemake@output[["output_single_sgRNA_phenotypes"]])

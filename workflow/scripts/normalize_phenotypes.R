@@ -1,6 +1,7 @@
 library(readr)
+library(dplyr)
 
-source("scripts/helper_functions.R")
+source("scripts/phenotype_helpers.R")
 
 # Dual logging when run under Snakemake
 if (exists("snakemake") && !is.null(snakemake@log) && length(snakemake@log) > 0) {
@@ -27,5 +28,6 @@ if (isTRUE(normalize_flag)) {
   phenos_out <- phenos
 }
 
-message(sprintf("[%s] Writing normalized phenotypes to %s", Sys.time(), snakemake@output[["output_normalized_phenotypes"]]))
+message(sprintf("[%s] Writing normalized phenotypes to %s", 
+                Sys.time(), snakemake@output[["output_normalized_phenotypes"]]))
 write_tsv(phenos_out, snakemake@output[["output_normalized_phenotypes"]])

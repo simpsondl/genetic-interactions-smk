@@ -1,6 +1,7 @@
 library(readr)
 
 source("scripts/helper_functions.R")
+source("scripts/phenotype_helpers.R")
 
 # Dual logging to both console and log file when running under Snakemake
 if (exists("snakemake") && !is.null(snakemake@log) && length(snakemake@log) > 0) {
@@ -51,13 +52,10 @@ message(sprintf("[%s] Starting calculate_phenotypes on %d constructs", Sys.time(
 raw_phenotypes <- calculate_phenotypes(counts = counts[counts$ConstructID %in% keep_constructs, ],
                                        conds = cond_df,
                                        pseudocount = pc,
-                                       # do not normalize here; normalization moved to its own rule
-                                       normalize = FALSE,
                                        doublings = doubs,
                                        phenotype_prefix_map = snakemake@params[["phenotype_prefix_map"]],
-                                       replicates = reps,
-                                       # do not compute replicate averages here; that is done downstream
-                                       compute_avgs = FALSE)
+                                       replicates = reps)
 message(sprintf("[%s] calculate_phenotypes returned %d rows", Sys.time(), nrow(raw_phenotypes)))
-message(sprintf("[%s] Writing raw (per-replicate) phenotypes to %s", Sys.time(), snakemake@output[["output_phenotypes_raw"]]))
+message(sprintf("[%s] Writing raw (per-replicate) phenotypes to %s", 
+                Sys.time(), snakemake@output[["output_phenotypes_raw"]]))
 write_tsv(raw_phenotypes, snakemake@output[["output_phenotypes_raw"]])

@@ -21,8 +21,7 @@ COMBINATION_SGRNA_COUNT_THRESHOLD: 50
 #SCREEN2022_COUNTS_COLUMNS: [14, 15, 16, 17, 18, 19]
 #SCREEN2023_COUNTS_COLUMNS: [14, 15, 16, 17, 18, 19]
 COUNT_PREFIXES: ["T0", "DMSO", "TREATED"]
-SCREEN2022_REPLICATES: ["R1", "R2"]
-SCREEN2023_REPLICATES: ["R1", "R2"]
+REPLICATES: ["R1", "R2"]
 
 ### Phenotype prefix map: mapping phenotype name -> [numerator_prefix, denominator_prefix]
 ### These are used by calculate_phenotypes to find columns like DMSO.R1, T0.R1 etc.
