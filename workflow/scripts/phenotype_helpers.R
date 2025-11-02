@@ -121,25 +121,28 @@ compute_phenotype_averages <- function(df, phenotype_prefix_map) {
 ### Helper: resolve column name for a given prefix and replicate suffix
 ### Tries matched_list first (if provided), then searches available colnames for
 ### common separators (., _, -) and a no-separator form. Falls back to prefix.suf
-resolve_pref_suf_colname <- function(prefix, suf, matched_list = NULL, colnames_vec = NULL) {
-  # Use explicitly matched name when available
-  if (!is.null(matched_list) && suf %in% names(matched_list) && !is.null(matched_list[[suf]])) {
+resolve_pref_suf_colname <- function(prefix, suf, matched_list = NULL, colnames_vec = NULL,
+                                     seps = c(".", "_", "-"), strict = FALSE) {
+  
+  if (!is.null(matched_list) && !is.null(matched_list[[suf]])) {
     return(matched_list[[suf]])
   }
 
-  # If we have the vector of available column names, try common separators
+  # 2) if we have available column names, build candidate list in preferred order
   if (!is.null(colnames_vec)) {
-    seps <- c(".", "_", "-")
-    for (sep in seps) {
-      cand <- paste0(prefix, sep, suf)
-      if (cand %in% colnames_vec) return(cand)
+    # candidates from separators, then no-sep, then dot as fallback
+    sep_candidates <- paste0(prefix, seps, suf)
+    candidates <- c(sep_candidates, paste0(prefix, suf), paste0(prefix, ".", suf))
+    found <- candidates[candidates %in% colnames_vec]
+    if (length(found) > 0) {
+      return(found[1])
     }
-    # try no separator
-    cand_nosep <- paste0(prefix, suf)
-    if (cand_nosep %in% colnames_vec) return(cand_nosep)
   }
 
-  # Fallback to dot separator to preserve previous behaviour
+  # 3) nothing matched: either error (strict) or return legacy dot form
+  if (isTRUE(strict)) {
+    stop(sprintf("No column matched for prefix='%s' suf='%s'", prefix, suf))
+  }
   return(paste0(prefix, ".", suf))
 }
 
@@ -292,19 +295,46 @@ calculate_phenotypes <- function(counts, conds, pseudocount = 10, doublings = NU
 ### ### ### GuideCombinationID with IDs beginning with sgc_
 ### Outputs:
 ### ### df containing orientation-independent phenotypes for all replicates and avg replicate
-calculate_averaged_phenotypes <- function(phenos) {
-  orind <- phenos %>% 
-            group_by(GuideCombinationID) %>% 
-              summarise(Gamma.OI.R1 = mean(Gamma.R1),
-                        Gamma.OI.R2 = mean(Gamma.R2),
-                        Gamma.OI.Avg = mean(Gamma.Avg),
-                        Tau.OI.R1 = mean(Tau.R1),
-                        Tau.OI.R2 = mean(Tau.R2),
-                        Tau.OI.Avg = mean(Tau.Avg),
-                        Rho.OI.R1 = mean(Rho.R1),
-                        Rho.OI.R2 = mean(Rho.R2),
-                        Rho.OI.Avg = mean(Rho.Avg),
-                        N = n())
+calculate_averaged_phenotypes <- function(phenos, phenotype_prefix_map = NULL, replicates = NULL) {
+  # Allow caller to provide the phenotype names (Gamma/Tau/Rho etc.)
+  if (is.null(phenotype_prefix_map)) {
+    phenotype_prefix_map <- list(Gamma = c("DMSO", "T0"),
+                                 Tau = c("TREATED", "T0"),
+                                 Rho = c("TREATED", "DMSO"))
+  }
+
+  phs <- names(phenotype_prefix_map)
+  if (length(phs) == 0) stop("phenotype_prefix_map must contain at least one phenotype name")
+
+  # Default replicate suffixes if not provided
+  if (is.null(replicates)) replicates <- c("R1", "R2", "Avg")
+
+  conn_pat <- "[._-]?"
+  
+  # Build a regex to match per-phenotype replicate columns using the provided replicates
+  ph_pattern <- paste0("^(", 
+                       paste(phs, collapse = "|"), 
+                       ")", conn_pat, "(", 
+                       paste(replicates, collapse = "|"), 
+                       ")$")
+
+  # Compute per-GuideCombinationID means for all matched phenotype replicate columns
+  orind <- phenos %>%
+    group_by(GuideCombinationID) %>%
+    summarise(across(.cols = matches(ph_pattern), .fns = ~ mean(.x, na.rm = TRUE)),
+              N = n())
+
+  # Rename phenotype columns to include orientation-independent marker ".OI"
+  # e.g. Gamma.R1 -> Gamma.OI.R1
+  orind <- orind %>%
+    rename_with(.fn = function(x) {
+      # Build a replacement pattern that mirrors the matching ph_pattern used
+      # above so we insert ".OI." between the phenotype name and suffix
+      pat <- paste0("^(", paste(phs, collapse = "|"), ")", conn_pat, "(.*)$")
+      sub(pat, "\\1.OI.\\2", x, perl = TRUE)
+    }, .cols = -GuideCombinationID)
+
+  # Preserve the original ordering used previously (numeric part of sgc_...)
   orind <- orind[order(as.numeric(gsub("sgc_", "", orind$GuideCombinationID))), ]
   return(orind)
 }

@@ -62,27 +62,27 @@ rule normalize_phenotypes:
     script:
         "../scripts/normalize_phenotypes.R"
 
-rule replicate_averaging:
+rule create_averaged_phenotypes:
     input:
         input_phenotypes_normalized="../outputs/phenotypes/{screen,[^_]+}_phenotypes.normalized.tsv",
         input_filter_flags="../outputs/misc_results/{screen}_filter_flags.tsv"
     output:
-        output_phenotypes="../outputs/phenotypes/{screen,[^_]+}_phenotypes.tsv",
+        output_phenotypes="../outputs/phenotypes/{screen,[^_]+}_processed_phenotypes.tsv",
         output_orientation_indep_phenotypes="../outputs/phenotypes/{screen,[^_]+}_orientation_independent_phenotypes.tsv",
         output_single_sgRNA_phenotypes="../outputs/phenotypes/{screen,[^_]+}_single_sgRNA_phenotypes.tsv"
     log:
-        "../outputs/logs/{screen}/preprocess/{screen}_replicate_averaging.log"
+        "../outputs/logs/{screen}/preprocess/{screen}_create_averaged_phenotypes.log"
     conda:
         "../envs/smk-env.yaml"
     params:
         average_replicates=config["AVERAGE_REPLICATES"],
         phenotype_prefix_map=lambda wildcards: config.get(f"{wildcards.screen.upper()}_PHENOTYPE_PREFIX_MAP", config.get("PHENOTYPE_PREFIX_MAP", None))
     script:
-        "../scripts/replicate_averaging.R"
+        "../scripts/create_averaged_phenotypes.R"
 
 rule apply_correlation_filter:
     input:
-        input_phenotypes="../outputs/phenotypes/{screen}_phenotypes.tsv",
+        input_phenotypes="../outputs/phenotypes/{screen}_processed_phenotypes.tsv",
         input_orientation_indep_phenotypes="../outputs/phenotypes/{screen}_orientation_independent_phenotypes.tsv",
         input_single_sgRNA_phenotypes="../outputs/phenotypes/{screen}_single_sgRNA_phenotypes.tsv",
         input_filter_flags="../outputs/misc_results/{screen}_filter_flags.tsv"
