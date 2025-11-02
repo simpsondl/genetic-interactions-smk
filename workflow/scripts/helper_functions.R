@@ -94,37 +94,55 @@ filt_combinations <- function(counts, conds, filtersamp, filterthresh) {
 }
 
 
-### Function for calculating correlations between single and combinatorial phenotypes for all sgRNAs
+### Function for calculating correlations between single and combinatorial phenotypes for a single phenotype
 ### Inputs:
-### ### combphenos - output from calculate_phenotypes function
-### ### singlephenos - output from calculate_single_sgRNA_phenotypes
+### ### combphenos - output from calculate_phenotypes function (must include phenotype OI columns)
+### ### singlephenos - output from calculate_single_sgRNA_phenotypes (must include phenotype OI columns)
+### ### phenotype - string, e.g. "Gamma" or "Tau"
+### ### phenocol_suffix - suffix for the phenotype column to correlate (default ".OI.Avg")
 ### ### filterthresh - the minimum correlation to not flag an sgRNA for filtering, default 0.25
 ### Outputs:
-### ### list containing four elements, in order:
-### ### ### df of all calculated correlations
-### ### ### sgRNA ids below threshold, gamma phenotypes
-### ### ### sgRNA ids below threshold, tau phenotypes
-### ### ### sgRNA ids below threshold, rho phenotypes
-filt_nocorrelation <- function(combphenos, singlephenos, filterthresh = 0.25) {
-  cors <- data.frame(sgRNA.ID = singlephenos$sgRNA.ID,
-                     Gamma.OI.Correlation = NA,
-                     Tau.OI.Correlation = NA,
-                     Rho.OI.Correlation = NA)
-  
-  for (i in singlephenos$sgRNA.ID){
-    tmp <- combphenos[combphenos$SecondPosition == i, c(colnames(combphenos)[1:9],
-                                                      "Gamma.OI.Avg", "Tau.OI.Avg", "Rho.OI.Avg")]
-    tmp <- merge(tmp, singlephenos[, c("sgRNA.ID", "Gamma.OI.Avg", "Tau.OI.Avg", "Rho.OI.Avg")],
-                 by.x = "FirstPosition", by.y = "sgRNA.ID", suffix = c(".Comb", ".Single"))
-    cors$Gamma.OI.Correlation[cors$sgRNA.ID == i] <- cor(tmp[, "Gamma.OI.Avg.Comb"], tmp[, "Gamma.OI.Avg.Single"])
-    cors$Tau.OI.Correlation[cors$sgRNA.ID == i] <- cor(tmp[, "Tau.OI.Avg.Comb"], tmp[, "Tau.OI.Avg.Single"])
-    cors$Rho.OI.Correlation[cors$sgRNA.ID == i] <- cor(tmp[, "Rho.OI.Avg.Comb"], tmp[, "Rho.OI.Avg.Single"])
+### ### list containing two elements:
+### ### ### df with columns sgRNA.ID and Correlation for the requested phenotype
+### ### ### character vector of sgRNA ids below the threshold for that phenotype
+filt_nocorrelation <- function(combphenos, singlephenos, phenotype, phenocol_suffix = ".OI.Avg", filterthresh = 0.25) {
+  if (missing(phenotype) || !is.character(phenotype) || length(phenotype) != 1) {
+    stop("filt_nocorrelation requires a single phenotype name as a string (e.g. 'Gamma')")
   }
-  
-  return(list(cors,
-              cors$sgRNA.ID[cors$Gamma.OI.Correlation < filterthresh],
-              cors$sgRNA.ID[cors$Tau.OI.Correlation < filterthresh],
-              cors$sgRNA.ID[cors$Rho.OI.Correlation < filterthresh]))
+
+  phencol <- paste0(phenotype, phenocol_suffix)
+
+  if (!(phencol %in% colnames(combphenos))) {
+    stop(sprintf("combphenos is missing required column '%s' for phenotype '%s'", phencol, phenotype))
+  }
+  if (!(phencol %in% colnames(singlephenos))) {
+    stop(sprintf("singlephenos is missing required column '%s' for phenotype '%s'", phencol, phenotype))
+  }
+
+  cors <- data.frame(sgRNA.ID = singlephenos$sgRNA.ID,
+                     Correlation = NA_real_, stringsAsFactors = FALSE)
+
+  # Iterate over sgRNA IDs and compute correlation between combined phenotype (as observed in constructs)
+  # and single-sgRNA phenotype values. We expect combphenos to have a row per construct with FirstPosition
+  # and SecondPosition metadata.
+  for (i in singlephenos$sgRNA.ID) {
+    tmp <- combphenos[combphenos$SecondPosition == i, c(colnames(combphenos)[1:9], phencol)]
+    tmp <- merge(tmp, singlephenos[, c("sgRNA.ID", phencol)], by.x = "FirstPosition", by.y = "sgRNA.ID", suffixes = c(".Comb", ".Single"))
+
+    comb_name <- paste0(phencol, ".Comb")
+    sing_name <- paste0(phencol, ".Single")
+
+    # Require at least two non-NA pairs to compute a correlation, otherwise leave NA
+    if (nrow(tmp) < 2 || all(is.na(tmp[[comb_name]])) || all(is.na(tmp[[sing_name]]))) {
+      cors$Correlation[cors$sgRNA.ID == i] <- NA_real_
+    } else {
+      cors$Correlation[cors$sgRNA.ID == i] <- suppressWarnings(cor(tmp[[comb_name]], tmp[[sing_name]], use = "pairwise.complete.obs"))
+    }
+  }
+
+  failing <- cors$sgRNA.ID[!is.na(cors$Correlation) & cors$Correlation < filterthresh]
+
+  return(list(cors, failing))
 }
 
 ### Function for calculating interaction scores

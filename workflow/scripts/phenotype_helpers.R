@@ -344,64 +344,65 @@ calculate_averaged_phenotypes <- function(phenos, phenotype_prefix_map = NULL, r
 ### ### phenos - output from calculate_phenotypes function
 ### Outputs:
 ### ### df containing single sgRNA phenotypes by replicate
-calculate_single_sgrna_phenotypes <- function(phenos) {
-  # Create dataframe for saving results
-  single_pheno <- data.frame("sgRNA.ID" = unique(c(phenos$FirstPosition, phenos$SecondPosition)), 
-                             "Gamma.OI.R1" = 0, 
-                             "Gamma.OI.R2" = 0,
-                             "Gamma.OI.Avg" = 0,
-                             "Tau.OI.R1" = 0,
-                             "Tau.OI.R2" = 0,
-                             "Tau.OI.Avg" = 0,
-                             "Rho.OI.R1" = 0,
-                             "Rho.OI.R2" = 0,
-                             "Rho.OI.Avg" = 0,
-                             "N" = 0)
-  
-  for (i in seq_len(nrow(single_pheno))){
-    if (i %% 100 == 0) {
-            progress_pct <- round((i / nrow(single_pheno)) * 100, 1)
-            message(sprintf("[%s] Processing sgRNA %d/%d (%s percent) - ID: %s", 
-                            Sys.time(), i, nrow(single_pheno), progress_pct, single_pheno$sgRNA.ID[i]))
-        }
+calculate_single_sgrna_phenotypes <- function(phenos, phenotype_prefix_map = NULL, replicates = NULL) {
+  # Allow caller to provide phenotype names and replicates; fall back to defaults
+  if (is.null(phenotype_prefix_map)) {
+    phenotype_prefix_map <- list(Gamma = c("DMSO", "T0"),
+                                 Tau = c("TREATED", "T0"),
+                                 Rho = c("TREATED", "DMSO"))
+  }
+  phs <- names(phenotype_prefix_map)
+  if (is.null(phs) || length(phs) == 0) stop("phenotype_prefix_map must contain at least one phenotype")
 
-    # Handle non-targeting case
-  if (grepl("non-targeting", single_pheno$sgRNA.ID[i])) {
-      # Extract all non-targeting guide combinations with desired non-targeting guide in position A or B
-      # If this is not handled explicitly, will aggregate all NT guides into a glob
-      tmp <- phenos[(phenos$FirstPosition == single_pheno$sgRNA.ID[i] &
-                                phenos$SecondPosition %in% unique(phenos$FirstPosition[phenos$Category == "NT+NT"])) | 
-                               (phenos$SecondPosition == single_pheno$sgRNA.ID[i] &
-                                  phenos$FirstPosition %in% unique(phenos$FirstPosition[phenos$Category == "NT+NT"])), ]
-      single_pheno$Gamma.OI.R1[i] <- mean(tmp$Gamma.R1)
-      single_pheno$Gamma.OI.R2[i] <- mean(tmp$Gamma.R2)
-      single_pheno$Gamma.OI.Avg[i] <- mean(tmp$Gamma.Avg)
-      single_pheno$Tau.OI.R1[i] <- mean(tmp$Tau.R1)
-      single_pheno$Tau.OI.R2[i] <- mean(tmp$Tau.R2)
-      single_pheno$Tau.OI.Avg[i] <- mean(tmp$Tau.Avg)
-      single_pheno$Rho.OI.R1[i] <- mean(tmp$Rho.R1)
-      single_pheno$Rho.OI.R2[i] <- mean(tmp$Rho.R2)
-      single_pheno$Rho.OI.Avg[i] <- mean(tmp$Rho.Avg)
-      single_pheno$N[i] <- nrow(tmp)
-    }  else {     
-      # Handle targeting case
-      # Extract all combinations with desired targeting guide in position A or B and non-targeting guide in other
-      # Easier to do this since we can just grab all non-targeting at once
-      tmp <- phenos[(phenos$FirstPosition == single_pheno$sgRNA.ID[i] | 
-                      phenos$SecondPosition == single_pheno$sgRNA.ID[i]) & 
-                    (phenos$FirstPosition %in% unique(phenos$FirstPosition[phenos$Category == "NT+NT"]) | 
-                      phenos$SecondPosition %in% unique(phenos$FirstPosition[phenos$Category == "NT+NT"])), ]
-      single_pheno$Gamma.OI.R1[i] <- mean(tmp$Gamma.R1)
-      single_pheno$Gamma.OI.R2[i] <- mean(tmp$Gamma.R2)
-      single_pheno$Gamma.OI.Avg[i] <- mean(tmp$Gamma.Avg)
-      single_pheno$Tau.OI.R1[i] <- mean(tmp$Tau.R1)
-      single_pheno$Tau.OI.R2[i] <- mean(tmp$Tau.R2)
-      single_pheno$Tau.OI.Avg[i] <- mean(tmp$Tau.Avg)
-      single_pheno$Rho.OI.R1[i] <- mean(tmp$Rho.R1)
-      single_pheno$Rho.OI.R2[i] <- mean(tmp$Rho.R2)
-      single_pheno$Rho.OI.Avg[i] <- mean(tmp$Rho.Avg)
-      single_pheno$N[i] <- nrow(tmp)
+  if (is.null(replicates)) replicates <- c("R1", "R2", "Avg")
+
+  conn_pat <- "[._-]?"
+  
+  # Prepare output columns dynamically: <Phenotype>.OI.<Replicate>
+  oi_cols <- unlist(lapply(phs, function(ph) paste0(ph, ".OI.", replicates)))
+
+  # Unique sgRNA IDs (from either position column)
+  sg_ids <- unique(c(phenos$FirstPosition, phenos$SecondPosition))
+
+  # Initialize output dataframe
+  single_pheno <- data.frame("sgRNA.ID" = sg_ids, stringsAsFactors = FALSE)
+  for (cname in oi_cols) single_pheno[[cname]] <- 0
+  single_pheno$N <- 0
+
+  for (i in seq_len(nrow(single_pheno))) {
+    if (i %% 100 == 0) {
+      progress_pct <- round((i / nrow(single_pheno)) * 100, 1)
+      message(sprintf("[%s] Processing sgRNA %d/%d (%s percent) - ID: %s", 
+                      Sys.time(), i, nrow(single_pheno), progress_pct, single_pheno$sgRNA.ID[i]))
     }
+
+    sg <- single_pheno$sgRNA.ID[i]
+
+    # construct tmp: combinations where sgRNA is in A or B and the other is non-targeting (or both NT for NT case)
+    if (grepl("non-targeting", sg)) {
+      tmp <- phenos[(phenos$FirstPosition == sg & 
+                      phenos$SecondPosition %in% unique(phenos$FirstPosition[phenos$Category == "NT+NT"])) |
+                    (phenos$SecondPosition == sg & 
+                      phenos$FirstPosition %in% unique(phenos$FirstPosition[phenos$Category == "NT+NT"])), ]
+    } else {
+      tmp <- phenos[(phenos$FirstPosition == sg | phenos$SecondPosition == sg) & 
+                    (phenos$FirstPosition %in% unique(phenos$FirstPosition[phenos$Category == "NT+NT"]) |
+                     phenos$SecondPosition %in% unique(phenos$FirstPosition[phenos$Category == "NT+NT"])), ]
+    }
+
+    # For each phenotype and replicate, compute mean across matching combos (preserve NA if column missing)
+    for (ph in phs) {
+      for (suf in replicates) {
+        src_col <- paste0(ph, ".", suf)
+        out_col <- paste0(ph, ".OI.", suf)
+        if (src_col %in% colnames(tmp)) {
+          single_pheno[[out_col]][i] <- mean(tmp[[src_col]], na.rm = TRUE)
+        } else {
+          single_pheno[[out_col]][i] <- NA
+        }
+      }
+    }
+    single_pheno$N[i] <- nrow(tmp)
   }
   return(single_pheno)
 }

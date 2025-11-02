@@ -60,6 +60,9 @@ SCREEN2023_DOUBLINGS:
 ### Correlation filter parameters
 NO_CORRELATION_THRESHOLD: 0.25
 
+### Phenotypes to use for genetic interaction score calculation
+GI_PHENOTYPES: ["Gamma", "Tau", "Rho"]
+
 ### Genetic interaction score calculation parameters
 SCREEN2022_GI_SCORES: ["Gamma.OI.R1", "Gamma.OI.R2", "Gamma.OI.Avg", "Tau.OI.R1", "Tau.OI.R2", "Tau.OI.Avg"]
 SCREEN2023_GI_SCORES: ["Gamma.OI.R1", "Gamma.OI.R2", "Gamma.OI.Avg", "Tau.OI.R1", "Tau.OI.R2", "Tau.OI.Avg"]
