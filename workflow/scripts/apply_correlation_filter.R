@@ -18,9 +18,27 @@ single_phenotypes <- read_tsv(snakemake@input[["input_single_sgRNA_phenotypes"]]
 to_filt <- read_tsv(snakemake@input[["input_filter_flags"]])
 
 # Determine phenotypes to process (passed from Snakemake params)
-phenos_to_process <- snakemake@params[["phenotypes"]]
-if (is.null(phenos_to_process) || length(phenos_to_process) == 0) {
-  phenos_to_process <- c("Gamma", "Tau")
+phenos_all <- snakemake@params[["phenotypes"]]
+if (is.null(phenos_all) || length(phenos_all) == 0) {
+  # default order if not provided
+  phenos_all <- c("Gamma", "Tau", "Rho")
+}
+
+# Optional mapping from config telling which phenotypes should have the
+# no-correlation filter applied. If provided, it should be a named list of
+# booleans, e.g. list(Gamma=TRUE, Tau=TRUE, Rho=FALSE). The order of
+# phenos_all determines the processing order.
+no_corr_map <- snakemake@params[["no_correlation_filter"]]
+phenos_to_process <- character(0)
+if (!is.null(no_corr_map) && length(no_corr_map) > 0) {
+  # If user provided a character vector, treat it as an ordered list of
+  # phenotypes to filter (preserves user order).
+  if (is.character(no_corr_map)) {
+    phenos_to_process <- no_corr_map[no_corr_map %in% phenos_all]
+  } 
+} else {
+  # If no mapping provided, default to processing all phenos in phenos_all
+  phenos_to_process <- phenos_all
 }
 
 # Determine replicates (if provided) to identify expected OI columns (R1, R2, ...)
@@ -30,9 +48,10 @@ if (is.null(replicates)) {
   replicates <- c("R1", "R2")
 }
 
-# Build the list of orientation-independent columns we expect in the orind_phenotypes file
+# Build the list of orientation-independent columns for ALL phenotypes (not just filtered ones)
+# This ensures Rho OI columns are joined even if Rho isn't in NO_CORRELATION_FILTER
 expected_oi_cols <- c("GuideCombinationID")
-for (p in phenos_to_process) {
+for (p in phenos_all) {
   for (r in replicates) expected_oi_cols <- c(expected_oi_cols, paste0(p, ".OI.", r))
   expected_oi_cols <- c(expected_oi_cols, paste0(p, ".OI.Avg"))
 }
@@ -62,8 +81,8 @@ message(sprintf("[%s] Number of filter-flag rows: %d", Sys.time(), nrow(to_filt)
 # Identify single sgRNAs whose combinatorial and single phenotypes do not correlate
 # Returns a list with four elements, first is a dataframe of all calculated correlations,
 # second element is gamma sgRNAs which failed filter, and third is tau sgRNAs which failed filter
-message(sprintf("[%s] Starting per-phenotype correlation filtering (threshold=%s)", Sys.time(), 
-                snakemake@params[["no_correlation_threshold"]]))
+message(sprintf("[%s] Starting per-phenotype correlation filtering (threshold=%s)", 
+                Sys.time(), snakemake@params[["no_correlation_threshold"]]))
 
 # We'll collect correlation tables for all phenotypes into a single long dataframe
 all_corrs <- list()

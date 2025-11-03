@@ -30,8 +30,8 @@ read_header <- function(path) {
 
 provided_cols <- read_header(provided_path)
 
-expected_cols <- snakemake@params[["expected_count_columns"]]
-message(sprintf("[%s] Using expected columns from snakemake params (EXPECTED_COUNT_COLUMNS)",
+expected_cols <- snakemake@params[["expected_meta_columns"]]
+message(sprintf("[%s] Using expected columns from snakemake params (EXPECTED_META_COLUMNS)",
                 Sys.time()))
 
 

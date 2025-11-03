@@ -127,7 +127,8 @@ filt_nocorrelation <- function(combphenos, singlephenos, phenotype, phenocol_suf
   # and SecondPosition metadata.
   for (i in singlephenos$sgRNA.ID) {
     tmp <- combphenos[combphenos$SecondPosition == i, c(colnames(combphenos)[1:9], phencol)]
-    tmp <- merge(tmp, singlephenos[, c("sgRNA.ID", phencol)], by.x = "FirstPosition", by.y = "sgRNA.ID", suffixes = c(".Comb", ".Single"))
+    tmp <- merge(tmp, singlephenos[, c("sgRNA.ID", phencol)], 
+                 by.x = "FirstPosition", by.y = "sgRNA.ID", suffixes = c(".Comb", ".Single"))
 
     comb_name <- paste0(phencol, ".Comb")
     sing_name <- paste0(phencol, ".Single")
@@ -136,7 +137,9 @@ filt_nocorrelation <- function(combphenos, singlephenos, phenotype, phenocol_suf
     if (nrow(tmp) < 2 || all(is.na(tmp[[comb_name]])) || all(is.na(tmp[[sing_name]]))) {
       cors$Correlation[cors$sgRNA.ID == i] <- NA_real_
     } else {
-      cors$Correlation[cors$sgRNA.ID == i] <- suppressWarnings(cor(tmp[[comb_name]], tmp[[sing_name]], use = "pairwise.complete.obs"))
+      cors$Correlation[cors$sgRNA.ID == i] <- suppressWarnings(cor(tmp[[comb_name]], 
+                                                                   tmp[[sing_name]], 
+                                                                   use = "pairwise.complete.obs"))
     }
   }
 
@@ -166,7 +169,7 @@ compute_gis <- function(query, singlepheno_df, pairpheno_df, phenocol) {
   tmp_data_merge <- merge(tmp_data, pairpheno_df[pairpheno_df$SecondPosition == query, 
                                                  c("ConstructID",  "GuideCombinationID", "Identical",
                                                    "FirstPseudogene", "SecondPseudogene", "PseudogeneCombinationID",
-                                                   "Orientation", "GeneCombinationID", "Category",
+                                                   "Orientation", "Category",
                                                    "FirstPosition", phenocol)], 
                           by.x = "sgRNA.id", by.y = "FirstPosition", all.x = TRUE)
   
@@ -196,7 +199,7 @@ compute_gis <- function(query, singlepheno_df, pairpheno_df, phenocol) {
     
     ### Order dataframe
     tmp_data_merge <- tmp_data_merge[order(tmp_data_merge$GI), c("ConstructID", "GuideCombinationID", 
-                                                                 "PseudogeneCombinationID", "GeneCombinationID", 
+                                                                 "PseudogeneCombinationID", 
                                                                  "FirstPseudogene", "SecondPseudogene",
                                                                  "Orientation", "Identical", "Category", "Control",
                                                                  "sgRNA.id", "query", "single", phenocol, "Expected",
@@ -318,8 +321,8 @@ assess_sgcscore_variance <- function(congis, genegis) {
     }
 
     row_gen <- dt_gen[PseudogeneCombinationID == i]
-    gene1 <- row_gen$Pseudogene1[1]
-    gene2 <- row_gen$Pseudogene2[1]
+    gene1 <- row_gen$PseudogeneA[1]
+    gene2 <- row_gen$PseudogeneB[1]
 
     # Fast subset: get all rows where SecondPseudogene is gene1 or gene2
     tmp <- dt_con[J(c(gene1, gene2)), nomatch = 0]
@@ -354,12 +357,32 @@ assess_sgcscore_variance <- function(congis, genegis) {
   return(as.data.frame(dt_gen))
 }
 
-compute_construct_diff_scores <- function(gamma, tau) {
-  info_cols <- c(colnames(gamma)[1:12], "GI.z") #meta info columns + GI scores
-  pm <- inner_join(gamma[, colnames(gamma) %in% info_cols], 
-                   tau[, colnames(tau) %in% info_cols],
-                   by = info_cols[1:12],
-                   suffix = c(".Gamma", ".Tau"))
-  pm$GI.z <- pm$GI.z.Tau - pm$GI.z.Gamma
+compute_construct_diff_scores <- function(reference, treated, 
+                                          reference_name = "Gamma", treated_name = "Tau",
+                                          info_cols = NULL) {
+  if (is.null(info_cols)) {
+    info_cols <- c("ConstructID", "GuideCombinationID", "PseudogeneCombinationID",
+                   "FirstPseudogene", "SecondPseudogene", "Category", "Control", 
+                   "Identical", "Orientation", "sgRNA.id", "query")
+  }
+  
+  # Generic differential calculator: treated - reference for GI.z
+  complete_info_cols <- c(info_cols, "GI.z") # meta info columns + GI scores
+  suffix1 <- paste0(".", reference_name)
+  suffix2 <- paste0(".", treated_name)
+
+  pm <- inner_join(reference[, colnames(reference) %in% complete_info_cols], 
+                   treated[, colnames(treated) %in% complete_info_cols],
+                   by = info_cols,
+                   suffix = c(suffix1, suffix2))
+
+  # Construct GI.z difference: treated - reference
+  gi_col_treated <- paste0("GI.z", suffix2)
+  gi_col_reference <- paste0("GI.z", suffix1)
+  if (!(gi_col_treated %in% colnames(pm)) || !(gi_col_reference %in% colnames(pm))) {
+    stop(sprintf("Expected GI.z columns '%s' and '%s' in joined table", 
+                 gi_col_reference, gi_col_treated))
+  }
+  pm$GI.z <- pm[[gi_col_treated]] - pm[[gi_col_reference]]
   return(pm)
 }

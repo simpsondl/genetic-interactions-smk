@@ -1,11 +1,15 @@
 rule diagnostic_plot:
     input:
-        input_scores="../outputs/gi_scores/{screen}/gene_combination_scores/gene_combination_scores_{score}.tsv",
-        input_idmap="data/annotations/{screen}_id_to_name_mapping.tsv"
+        input_scores=f"{OUTPUTS_DIR}/gi_scores/{{screen}}/gene_combination_scores/gene_combination_scores_{{score}}.tsv",
+        input_idmap=lambda wildcards: (
+            f"data/annotations/{wildcards.screen}_id_to_name_mapping.tsv" 
+            if config.get("COUNTS_SOURCE") == "manuscript" 
+            else f"{OUTPUTS_DIR}/annotations/{wildcards.screen}_gene_combination_id_map.tsv"
+        )
     output:
-        output_diagnostic_plot="../outputs/gi_scores/{screen}/clusters/diagnostic_plot_{score}.svg"
+        output_diagnostic_plot=f"{OUTPUTS_DIR}/gi_scores/{{screen}}/clusters/diagnostic_plot_{{score}}.svg"
     log:
-        "../outputs/logs/{screen}/clustering/{screen}_{score}_diagnostic_plot.log"
+        f"{LOGS_DIR}/{{screen}}/clustering/{{screen}}_{{score}}_diagnostic_plot.log"
     conda:
         "../envs/smk-env.yaml"
     params:
