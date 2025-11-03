@@ -41,7 +41,7 @@ rule plot_figure_2b:
         input_nu_gene_level=f"{OUTPUTS_DIR}/gi_scores/screen2023/discriminant_scores/discriminant_hits_Nu.OI.Avg.tsv",
         input_idmap=(
             "data/annotations/screen2023_id_to_name_mapping.tsv" 
-            if config.get("COUNTS_SOURCE") == "manuscript" 
+            if config.get("COUNTS_SOURCE") == "counts_metadata" 
             else f"{OUTPUTS_DIR}/annotations/screen2023_gene_combination_id_map.tsv"
         )
     output:
@@ -57,7 +57,7 @@ rule plot_figure_2d:
         input_nu=f"{OUTPUTS_DIR}/gi_scores/screen2023/discriminant_scores/discriminant_hits_Nu.OI.Avg.tsv",
         input_idmap=(
             "data/annotations/screen2023_id_to_name_mapping.tsv" 
-            if config.get("COUNTS_SOURCE") == "manuscript" 
+            if config.get("COUNTS_SOURCE") == "counts_metadata" 
             else f"{OUTPUTS_DIR}/annotations/screen2023_gene_combination_id_map.tsv"
         )
     output:
@@ -74,7 +74,7 @@ rule plot_figure_3a:
         input_nu=f"{OUTPUTS_DIR}/gi_scores/screen2023/discriminant_scores/discriminant_hits_Nu.OI.Avg.tsv",
         input_idmap=(
             "data/annotations/screen2023_id_to_name_mapping.tsv" 
-            if config.get("COUNTS_SOURCE") == "manuscript" 
+            if config.get("COUNTS_SOURCE") == "counts_metadata" 
             else f"{OUTPUTS_DIR}/annotations/screen2023_gene_combination_id_map.tsv"
         )
     output:
@@ -91,7 +91,7 @@ rule plot_figure_3b_negative:
         input_nu=f"{OUTPUTS_DIR}/gi_scores/screen2023/discriminant_scores/discriminant_hits_Nu.OI.Avg.tsv",
         input_idmap=(
             "data/annotations/screen2023_id_to_name_mapping.tsv" 
-            if config.get("COUNTS_SOURCE") == "manuscript" 
+            if config.get("COUNTS_SOURCE") == "counts_metadata" 
             else f"{OUTPUTS_DIR}/annotations/screen2023_gene_combination_id_map.tsv"
         )
     output:
@@ -109,7 +109,7 @@ rule plot_figure_3b_positive:
         input_nu=f"{OUTPUTS_DIR}/gi_scores/screen2023/discriminant_scores/discriminant_hits_Nu.OI.Avg.tsv",
         input_idmap=(
             "data/annotations/screen2023_id_to_name_mapping.tsv" 
-            if config.get("COUNTS_SOURCE") == "manuscript" 
+            if config.get("COUNTS_SOURCE") == "counts_metadata" 
             else f"{OUTPUTS_DIR}/annotations/screen2023_gene_combination_id_map.tsv"
         )
     output:

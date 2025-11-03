@@ -99,53 +99,110 @@ filt_combinations <- function(counts, conds, filtersamp, filterthresh) {
 ### ### combphenos - output from calculate_phenotypes function (must include phenotype OI columns)
 ### ### singlephenos - output from calculate_single_sgRNA_phenotypes (must include phenotype OI columns)
 ### ### phenotype - string, e.g. "Gamma" or "Tau"
-### ### phenocol_suffix - suffix for the phenotype column to correlate (default ".OI.Avg")
+### ### filter_mode - one of "avg_only", "any", "all" (determines which columns to test and fail logic)
 ### ### filterthresh - the minimum correlation to not flag an sgRNA for filtering, default 0.25
 ### Outputs:
-### ### list containing two elements:
-### ### ### df with columns sgRNA.ID and Correlation for the requested phenotype
-### ### ### character vector of sgRNA ids below the threshold for that phenotype
-filt_nocorrelation <- function(combphenos, singlephenos, phenotype, phenocol_suffix = ".OI.Avg", filterthresh = 0.25) {
+### ### list containing three elements:
+### ### ### df with columns sgRNA.ID, one Correlation column per tested suffix, and FailedColumns (comma-separated)
+### ### ### character vector of sgRNA ids that fail overall based on filter_mode
+### ### ### df with summary stats: Column, N_Tested, N_Failed
+filt_nocorrelation <- function(combphenos, singlephenos, phenotype, filter_mode = "avg_only", filterthresh = 0.25) {
   if (missing(phenotype) || !is.character(phenotype) || length(phenotype) != 1) {
     stop("filt_nocorrelation requires a single phenotype name as a string (e.g. 'Gamma')")
   }
-
-  phencol <- paste0(phenotype, phenocol_suffix)
-
-  if (!(phencol %in% colnames(combphenos))) {
-    stop(sprintf("combphenos is missing required column '%s' for phenotype '%s'", phencol, phenotype))
-  }
-  if (!(phencol %in% colnames(singlephenos))) {
-    stop(sprintf("singlephenos is missing required column '%s' for phenotype '%s'", phencol, phenotype))
+  
+  if (!(filter_mode %in% c("avg_only", "any", "all"))) {
+    stop(sprintf("filter_mode must be one of: avg_only, any, all. Got: %s", filter_mode))
   }
 
-  cors <- data.frame(sgRNA.ID = singlephenos$sgRNA.ID,
-                     Correlation = NA_real_, stringsAsFactors = FALSE)
-
-  # Iterate over sgRNA IDs and compute correlation between combined phenotype (as observed in constructs)
-  # and single-sgRNA phenotype values. We expect combphenos to have a row per construct with FirstPosition
-  # and SecondPosition metadata.
+  # Find all available OI columns for this phenotype
+  oi_pattern <- paste0("^", phenotype, "\\.OI\\.")
+  available_oi_cols_comb <- grep(oi_pattern, colnames(combphenos), value = TRUE)
+  available_oi_cols_single <- grep(oi_pattern, colnames(singlephenos), value = TRUE)
+  
+  # Determine which columns to filter on based on mode
+  if (filter_mode == "avg_only") {
+    filter_cols <- grep("\\.Avg$", available_oi_cols_comb, value = TRUE)
+    if (length(filter_cols) == 0) {
+      stop(sprintf("filter_mode='avg_only' but no .Avg column found for phenotype '%s'", phenotype))
+    }
+  } else {
+    # For "any" or "all", use all available OI columns
+    filter_cols <- available_oi_cols_comb
+  }
+  
+  # Verify columns exist in both tables
+  missing_single <- setdiff(filter_cols, available_oi_cols_single)
+  if (length(missing_single) > 0) {
+    stop(sprintf("singlephenos is missing required columns for phenotype '%s': %s", 
+                 phenotype, paste(missing_single, collapse = ", ")))
+  }
+  
+  message(sprintf("[%s]   Filter mode: %s; testing columns: %s", 
+                  Sys.time(), filter_mode, paste(filter_cols, collapse = ", ")))
+  
+  # Initialize results dataframe with sgRNA.ID and one column per filter_col
+  cors <- data.frame(sgRNA.ID = singlephenos$sgRNA.ID, stringsAsFactors = FALSE)
+  for (col in filter_cols) {
+    cors[[col]] <- NA_real_
+  }
+  
+  # Compute correlations for each sgRNA and each filter column
   for (i in singlephenos$sgRNA.ID) {
-    tmp <- combphenos[combphenos$SecondPosition == i, c(colnames(combphenos)[1:9], phencol)]
-    tmp <- merge(tmp, singlephenos[, c("sgRNA.ID", phencol)], 
-                 by.x = "FirstPosition", by.y = "sgRNA.ID", suffixes = c(".Comb", ".Single"))
-
-    comb_name <- paste0(phencol, ".Comb")
-    sing_name <- paste0(phencol, ".Single")
-
-    # Require at least two non-NA pairs to compute a correlation, otherwise leave NA
-    if (nrow(tmp) < 2 || all(is.na(tmp[[comb_name]])) || all(is.na(tmp[[sing_name]]))) {
-      cors$Correlation[cors$sgRNA.ID == i] <- NA_real_
-    } else {
-      cors$Correlation[cors$sgRNA.ID == i] <- suppressWarnings(cor(tmp[[comb_name]], 
-                                                                   tmp[[sing_name]], 
-                                                                   use = "pairwise.complete.obs"))
+    for (col in filter_cols) {
+      tmp <- combphenos[combphenos$SecondPosition == i, c(colnames(combphenos)[1:9], col)]
+      tmp <- merge(tmp, singlephenos[, c("sgRNA.ID", col)], 
+                   by.x = "FirstPosition", by.y = "sgRNA.ID", suffixes = c(".Comb", ".Single"))
+      
+      comb_name <- paste0(col, ".Comb")
+      sing_name <- paste0(col, ".Single")
+      
+      # Require at least two non-NA pairs to compute a correlation
+      if (nrow(tmp) < 2 || all(is.na(tmp[[comb_name]])) || all(is.na(tmp[[sing_name]]))) {
+        cors[[col]][cors$sgRNA.ID == i] <- NA_real_
+      } else {
+        cors[[col]][cors$sgRNA.ID == i] <- suppressWarnings(cor(tmp[[comb_name]], 
+                                                                 tmp[[sing_name]], 
+                                                                 use = "pairwise.complete.obs"))
+      }
     }
   }
-
-  failing <- cors$sgRNA.ID[!is.na(cors$Correlation) & cors$Correlation < filterthresh]
-
-  return(list(cors, failing))
+  
+  # Determine which sgRNAs fail each column
+  fail_matrix <- as.data.frame(sapply(filter_cols, function(col) {
+    !is.na(cors[[col]]) & cors[[col]] < filterthresh
+  }))
+  colnames(fail_matrix) <- filter_cols
+  
+  # Apply filtering logic based on mode
+  if (filter_mode == "any") {
+    fail_overall <- apply(fail_matrix, 1, any)
+  } else if (filter_mode == "all") {
+    fail_overall <- apply(fail_matrix, 1, all)
+  } else { # avg_only
+    fail_overall <- fail_matrix[[filter_cols[1]]]
+  }
+  
+  # Add FailedColumns column (comma-separated list of columns that failed)
+  cors$FailedColumns <- apply(fail_matrix, 1, function(row) {
+    failed <- names(row)[row]
+    if (length(failed) == 0) return("")
+    paste(failed, collapse = ", ")
+  })
+  
+  # Get list of failing sgRNAs
+  failing_sgrnas <- cors$sgRNA.ID[fail_overall]
+  
+  # Create summary statistics
+  summary_stats <- data.frame(
+    Column = filter_cols,
+    N_Tested = sapply(filter_cols, function(col) sum(!is.na(cors[[col]]))),
+    N_Failed = sapply(filter_cols, function(col) sum(!is.na(cors[[col]]) & cors[[col]] < filterthresh)),
+    stringsAsFactors = FALSE
+  )
+  summary_stats$Pct_Failed <- round(100 * summary_stats$N_Failed / summary_stats$N_Tested, 2)
+  
+  return(list(cors, failing_sgrnas, summary_stats))
 }
 
 ### Function for calculating interaction scores

@@ -79,13 +79,19 @@ message(sprintf("[%s] Number of single-phenotype rows: %d", Sys.time(), nrow(sin
 message(sprintf("[%s] Number of filter-flag rows: %d", Sys.time(), nrow(to_filt)))
 
 # Identify single sgRNAs whose combinatorial and single phenotypes do not correlate
-# Returns a list with four elements, first is a dataframe of all calculated correlations,
-# second element is gamma sgRNAs which failed filter, and third is tau sgRNAs which failed filter
 message(sprintf("[%s] Starting per-phenotype correlation filtering (threshold=%s)", 
                 Sys.time(), snakemake@params[["no_correlation_threshold"]]))
 
-# We'll collect correlation tables for all phenotypes into a single long dataframe
+# Get filter mode from params (default to avg_only)
+filter_mode <- snakemake@params[["correlation_filter_mode"]]
+if (is.null(filter_mode)) {
+  filter_mode <- "avg_only"
+}
+message(sprintf("[%s] Correlation filter mode: %s", Sys.time(), filter_mode))
+
+# We'll collect correlation tables and summaries for all phenotypes
 all_corrs <- list()
+all_summaries <- list()
 pheno_filtered <- raw_phenotypes
 single_pheno_filtered <- single_phenotypes
 
@@ -95,11 +101,12 @@ for (p in phenos_to_process) {
   res <- filt_nocorrelation(combphenos = pheno_filtered,
                             singlephenos = single_pheno_filtered,
                             phenotype = p,
-                            phenocol_suffix = ".OI.Avg",
+                            filter_mode = filter_mode,
                             filterthresh = snakemake@params[["no_correlation_threshold"]])
 
   cors_tbl <- res[[1]]
   failing_sgrnas <- res[[2]]
+  summary_stats <- res[[3]]
 
   message(sprintf("[%s] %s: correlation table rows=%d; failing sgRNAs=%d", 
                   Sys.time(), p, nrow(cors_tbl), length(failing_sgrnas)))
@@ -107,10 +114,29 @@ for (p in phenos_to_process) {
     message(sprintf("[%s] Example %s failures: %s", 
                     Sys.time(), p, paste(head(failing_sgrnas, 5), collapse = ", ")))
   }
+  
+  # Log summary statistics
+  message(sprintf("[%s] %s summary by column:", Sys.time(), p))
+  for (i in seq_len(nrow(summary_stats))) {
+    message(sprintf("[%s]   %s: %d/%d failed (%.1f percent)", 
+                    Sys.time(), summary_stats$Column[i], 
+                    summary_stats$N_Failed[i], summary_stats$N_Tested[i],
+                    summary_stats$Pct_Failed[i]))
+  }
 
   # Attach phenotype label and store
+  # Rename correlation columns to generic names to allow rbind across phenotypes
+  cor_cols <- grep("^.+\\.OI\\.", colnames(cors_tbl), value = TRUE)
+  for (j in seq_along(cor_cols)) {
+    old_name <- cor_cols[j]
+    new_name <- paste0("Correlation_", j)
+    colnames(cors_tbl)[colnames(cors_tbl) == old_name] <- new_name
+  }
   cors_tbl$Phenotype <- p
+  cors_tbl$TestedColumns <- paste(cor_cols, collapse = ", ")
+  summary_stats$Phenotype <- p
   all_corrs[[p]] <- cors_tbl
+  all_summaries[[p]] <- summary_stats
 
   # Pull out filtered phenotypes for interaction scores for this phenotype
   pheno_filtered <- pheno_filtered[!(pheno_filtered$FirstPosition %in% failing_sgrnas) &
@@ -145,9 +171,11 @@ for (p in phenos_to_process) {
   }
 }
 
-# Combine all per-phenotype correlation tables into a single file and write
+# Combine all per-phenotype correlation tables and summaries
 combined_corrs <- do.call(rbind, all_corrs)
+combined_summaries <- do.call(rbind, all_summaries)
 message(sprintf("[%s] Combined correlation table rows=%d", Sys.time(), nrow(combined_corrs)))
+message(sprintf("[%s] Combined summary table rows=%d", Sys.time(), nrow(combined_summaries)))
 
 # Summarize flags after correlation filter
 flag_summary <- to_filt %>% 
@@ -165,3 +193,10 @@ write_tsv(to_filt, snakemake@output[["output_full_filter_flags"]])
 write_tsv(combined_corrs, snakemake@output[["output_correlation_results"]])
 message(sprintf("[%s] Wrote combined correlation results to %s", 
                 Sys.time(), snakemake@output[["output_correlation_results"]]))
+
+# Save combined summary statistics to file (if output exists)
+if (!is.null(snakemake@output[["output_correlation_summary"]])) {
+  write_tsv(combined_summaries, snakemake@output[["output_correlation_summary"]])
+  message(sprintf("[%s] Wrote correlation summary statistics to %s", 
+                  Sys.time(), snakemake@output[["output_correlation_summary"]]))
+}

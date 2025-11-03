@@ -1,6 +1,6 @@
 rule apply_count_filters:
     input:
-        input_counts=_choose_counts,
+        input_counts=f"{OUTPUTS_DIR}/counts/{{screen}}_counts_with_metadata.tsv",
         validated_counts=f"{OUTPUTS_DIR}/misc_results/{{screen}}_counts_validated.txt"
     output:
         output_filter_flags=f"{OUTPUTS_DIR}/misc_results/{{screen,[^_]+}}_filter_flags.tsv"
@@ -23,7 +23,7 @@ rule apply_count_filters:
 
 rule calculate_phenotypes:
     input:
-        input_counts=_choose_counts,
+        input_counts=f"{OUTPUTS_DIR}/counts/{{screen}}_counts_with_metadata.tsv",
         input_filter_flags=f"{OUTPUTS_DIR}/misc_results/{{screen}}_filter_flags.tsv"
     output:
         # intermediate raw phenotype file; marked temp so it is removed after downstream rules
@@ -100,7 +100,8 @@ rule apply_correlation_filter:
         **{f"output_filtered_{p.lower()}_phenotypes": f"{OUTPUTS_DIR}/phenotypes/{{screen,[^_]+}}_filtered_{p.lower()}_phenotypes.tsv" for p in FILTER_PHENOS},
         **{f"output_filtered_{p.lower()}_single_sgRNA_phenotypes": f"{OUTPUTS_DIR}/phenotypes/{{screen,[^_]+}}_filtered_{p.lower()}_single_sgRNA_phenotypes.tsv" for p in FILTER_PHENOS},
         output_full_filter_flags=f"{OUTPUTS_DIR}/misc_results/{{screen,[^_]+}}_full_filter_flags.tsv",
-        output_correlation_results=f"{OUTPUTS_DIR}/misc_results/{{screen,[^_]+}}_correlation_results.tsv"
+        output_correlation_results=f"{OUTPUTS_DIR}/misc_results/{{screen,[^_]+}}_correlation_results.tsv",
+        output_correlation_summary=f"{OUTPUTS_DIR}/misc_results/{{screen,[^_]+}}_correlation_summary.tsv"
     log:
         f"{LOGS_DIR}/{{screen,[^_]+}}/preprocess/apply_correlation_filter.log"
     conda:
@@ -115,6 +116,8 @@ rule apply_correlation_filter:
         no_correlation_filter=lambda wildcards: config.get(f"{wildcards.screen.upper()}_NO_CORRELATION_FILTER",
                                                             config.get("NO_CORRELATION_FILTER", {})),
         no_correlation_threshold=lambda wildcards: config.get(f"{wildcards.screen.upper()}_NO_CORRELATION_THRESHOLD",
-                                                               config.get("NO_CORRELATION_THRESHOLD"))
+                                                               config.get("NO_CORRELATION_THRESHOLD")),
+        correlation_filter_mode=lambda wildcards: config.get(f"{wildcards.screen.upper()}_CORRELATION_FILTER_MODE",
+                                                              config.get("CORRELATION_FILTER_MODE", "avg_only"))
     script:
         "../scripts/apply_correlation_filter.R"

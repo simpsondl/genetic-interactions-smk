@@ -16,7 +16,6 @@ rule compute_genetic_interaction_scores:
         # Build regex dynamically from GI_PHENOTYPES config (e.g., "Gamma|Tau|Rho")
         score=r"(" + "|".join([rf"{p}\..*" for p in config.get("GI_PHENOTYPES", ["Gamma", "Tau"])]) + r")"
     params:
-        screen=lambda wildcards: wildcards.screen,
         score=lambda wildcards: wildcards.score
     script:
         "../scripts/calculate_gi_scores.R"
@@ -25,11 +24,7 @@ rule calculate_gene_level_scores:
     input:
         input_gi_scores=f"{OUTPUTS_DIR}/gi_scores/{{screen}}/construct_scores/all_gis_{{score}}.tsv",
         input_gi_workspace=f"{OUTPUTS_DIR}/gi_scores/{{screen}}/construct_scores/gi_workspace_{{score}}.rds",
-        input_idmap=lambda wildcards: (
-            f"data/annotations/{wildcards.screen}_id_to_name_mapping.tsv" 
-            if config.get("COUNTS_SOURCE") == "manuscript" 
-            else f"{OUTPUTS_DIR}/annotations/{wildcards.screen}_gene_combination_id_map.tsv"
-        )
+        input_idmap=f"{OUTPUTS_DIR}/annotations/{{screen}}_gene_combination_id_map.tsv"
     output:
         output_gene_level_scores=f"{OUTPUTS_DIR}/gi_scores/{{screen}}/gene_combination_scores/gene_combination_scores_{{score}}.tsv",
         output_gene_level_workspace=temp(f"{OUTPUTS_DIR}/gi_scores/{{screen}}/gene_combination_scores/gene_level_workspace_{{score}}.rds")
@@ -75,11 +70,7 @@ rule calculate_differential_scores:
         input_treated_gi_scores=lambda wildcards: f"{OUTPUTS_DIR}/gi_scores/{wildcards.screen}/construct_scores/all_gis_{DIFFERENTIAL_COMPARISONS[wildcards.comp][0]}.{wildcards.rep}.tsv",
         input_reference_workspace=lambda wildcards: f"{OUTPUTS_DIR}/gi_scores/{wildcards.screen}/construct_scores/gi_workspace_{DIFFERENTIAL_COMPARISONS[wildcards.comp][1]}.{wildcards.rep}.rds",
         input_treated_workspace=lambda wildcards: f"{OUTPUTS_DIR}/gi_scores/{wildcards.screen}/construct_scores/gi_workspace_{DIFFERENTIAL_COMPARISONS[wildcards.comp][0]}.{wildcards.rep}.rds",
-        input_idmap=lambda wildcards: (
-            f"data/annotations/{wildcards.screen}_id_to_name_mapping.tsv" 
-            if config.get("COUNTS_SOURCE") == "manuscript" 
-            else f"{OUTPUTS_DIR}/annotations/{wildcards.screen}_gene_combination_id_map.tsv"
-        )
+        input_idmap=lambda wildcards: f"{OUTPUTS_DIR}/annotations/{wildcards.screen}_gene_combination_id_map.tsv"
     output:
         output_differential_scores=f"{OUTPUTS_DIR}/gi_scores/{{screen}}/construct_scores/all_gis_{{comp}}.{{rep}}.tsv",
         output_gene_differential_scores=f"{OUTPUTS_DIR}/gi_scores/{{screen}}/gene_combination_scores/gene_combination_scores_{{comp}}.{{rep}}.tsv",
@@ -94,8 +85,6 @@ rule calculate_differential_scores:
     params:
         rep=lambda wildcards: wildcards.rep,
         screen=lambda wildcards: wildcards.screen,
-        comp=lambda wildcards: wildcards.comp,
-        expected_meta_columns=config.get("EXPECTED_META_COLUMNS", None),
         reference_pheno=lambda wildcards: DIFFERENTIAL_COMPARISONS[wildcards.comp][1],
         treated_pheno=lambda wildcards: DIFFERENTIAL_COMPARISONS[wildcards.comp][0]
     script:

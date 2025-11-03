@@ -1,44 +1,6 @@
 import os
 
 
-def _choose_counts(wildcards):
-    """Choose the counts input according to config.
-
-    Configuration key `COUNTS_SOURCE` controls behavior and accepts:
-      - "manuscript" (default): use raw input counts under data/counts/{screen}_raw_counts.tsv or .zip
-      - "counts_only": use the generated counts with metadata produced by the pipeline
-        (../outputs/counts/{screen}_counts_with_metadata.tsv). This creates a DAG
-        dependency on the `generate_id_maps` rule.
-      - "counts_metadata": use a pre-provided counts-with-metadata file. The pattern to
-        use may be supplied via `COUNTS_FILEPATH_PATTERN` in config.yaml;
-        if not supplied, it defaults to ../outputs/counts/{screen}_counts_with_metadata.tsv
-    """
-    mode = config.get("COUNTS_SOURCE", "manuscript")
-    mode = str(mode).lower()
-    # Provided pattern (optional)
-    provided_pattern = config.get("COUNTS_FILEPATH_PATTERN", "data/counts/{screen}_counts_with_metadata.tsv")
-
-    if mode == "counts_only":
-        # Depend on the pipeline's generated file (generate_id_maps rule)
-        return f"{OUTPUTS_DIR}/counts/{wildcards.screen}_counts_with_metadata.tsv"
-    elif mode == "counts_metadata":
-        # Allow the user to provide a pattern; substitute {screen}
-        try:
-            return provided_pattern.format(screen=wildcards.screen)
-        except Exception:
-            # fallback to the conventional path
-            return f"{OUTPUTS_DIR}/counts/{wildcards.screen}_counts_with_metadata.tsv"
-    else:
-        # manuscript mode (default) -- existing behaviour: prefer TSV then ZIP
-        tsv = f"data/counts/{wildcards.screen}_raw_counts.tsv"
-        zipf = f"data/counts/{wildcards.screen}_raw_counts.zip"
-        if os.path.exists(tsv):
-            return tsv
-        if os.path.exists(zipf):
-            return zipf
-        raise FileNotFoundError(f"Neither {{tsv}} nor {{zipf}} found for screen {wildcards.screen}")
-
-
 def _expand_scores_for_screen(wc=None):
     screens = config.get("SCREENS")
     if screens is None:

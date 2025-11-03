@@ -12,12 +12,11 @@ LOGS_DIR: ../logs
 ### Expected to exactly match filename prefixes in data/counts/
 SCREENS: [screen2022, screen2023]
 
-### Source of counts data: manuscript, counts_only, counts_metadata
-COUNTS_SOURCE: counts_only
-
-### Filepath pattern for provided counts-with-metadata files 
-### Only used if COUNTS_SOURCE is counts_metadata
-COUNTS_FILEPATH_PATTERN: data/counts/{screen}_counts_with_metadata.tsv
+### Filepath pattern for input counts files
+### Use {screen} as a placeholder for screen names
+### Supports both TSV and ZIP files 
+### ZIP should contain a file ending in _counts.tsv, _counts_only.tsv, or _counts_with_metadata.tsv
+COUNTS_FILEPATH_PATTERN: data/counts/{screen}_raw_counts.zip
 
 ###############################################################################
 ###############################################################################
@@ -43,8 +42,11 @@ PHENOTYPE_PREFIX_MAP:
   Rho: [TREATED, DMSO]
 
 ### Phenotypes to use for genetic interaction score calculation
-### Must match keys in PHENOTYPE_PREFIX_MAP
-GI_PHENOTYPES: [Gamma, Tau, Rho]
+### Must match keys in PHENOTYPE_PREFIX_MAP, but doesn't need to be all of them
+GI_PHENOTYPES: [Gamma, Tau]
+
+## Order in which the no correlation filter is applied and to which phenotypes
+### Must match keys in PHENOTYPE_PREFIX_MAP, but doesn't need to be all of them
 NO_CORRELATION_FILTER:
   - Gamma
   - Tau
@@ -78,6 +80,7 @@ AVERAGE_REPLICATES: TRUE
 
 ### Correlation filter parameters
 NO_CORRELATION_THRESHOLD: 0.25
+CORRELATION_FILTER_MODE: avg_only  # or "any" or "all"
 
 ###############################################################################
 ###############################################################################
@@ -98,7 +101,7 @@ SCREEN2023_DOUBLINGS:
   DMSO:
     R1: 8.04
     R2: 7.98
-  TREATED:
+  NIRAP:
     R1: 5.40
     R2: 4.98
 
@@ -106,6 +109,14 @@ SCREEN2022_PHENOTYPE_PREFIX_MAP:
   Gamma: [DMSO, T0]
   Tau: [NIRAP, T0]
   Rho: [NIRAP, DMSO]
+
+SCREEN2023_PHENOTYPE_PREFIX_MAP:
+  Gamma: [DMSO, T0]
+  Tau: [NIRAP, T0]
+  Rho: [NIRAP, DMSO]
+
+SCREEN2022_COUNT_PREFIXES: [T0, DMSO, NIRAP]
+SCREEN2023_COUNT_PREFIXES: [T0, DMSO, NIRAP]
 
 ### Clustering parameters
 PHENOTYPES_TO_CLUSTER: [Gamma.OI.Avg, Tau.OI.Avg, Nu.OI.Avg]
