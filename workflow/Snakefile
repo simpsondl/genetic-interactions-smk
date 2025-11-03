@@ -7,22 +7,26 @@ min_version("9.12.0")
 configfile: "../config/config.yaml"
 
 
+# Get output and log directories from config
+OUTPUTS_DIR = config.get("OUTPUTS_DIR", "../outputs")
+LOGS_DIR = config.get("LOGS_DIR", "../outputs/logs")
+
 include: "rules/helper_input_functions.smk"
 
-rule process_all_gi_scores_and_hits:
+rule process_all:
    input:
        lambda wildcards: _expand_discriminant_score_targets(wildcards),
        lambda wildcards: _expand_differential_score_targets(wildcards),
-       lambda wildcards: _expand_hit_targets(wildcards),
-       lambda wildcards: _expand_differential_hit_targets(wildcards)
-
+       lambda wildcards: _expand_hit_targets(wildcards)
+       
 rule generate_manuscript_figures:
     input:
-        "../outputs/manuscript_figures/figure_1d.svg",
-        "../outputs/manuscript_figures/figure_1e.svg",
-        "../outputs/manuscript_figures/figure_2a.png",
-        "../outputs/manuscript_figures/figure_2a_labels.png"
+        f"{OUTPUTS_DIR}/manuscript_figures/figure_1d.svg",
+        f"{OUTPUTS_DIR}/manuscript_figures/figure_1e.svg",
+        f"{OUTPUTS_DIR}/manuscript_figures/figure_2a.png",
+        f"{OUTPUTS_DIR}/manuscript_figures/figure_2a_labels.png"
 
+include: "rules/metadata_generation.smk"
 include: "rules/preprocess.smk"
 include: "rules/calculate_genetic_interaction_scores.smk"
 include: "rules/clustering.smk"

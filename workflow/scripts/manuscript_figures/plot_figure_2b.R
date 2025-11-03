@@ -36,7 +36,7 @@ gene_grid_r1 <- left_join(gene_grid_r1,
                           by = c("Var1"= "Pseudogene2", "Var2" = "Pseudogene1"))
 gene_grid_r1 <- left_join(gene_grid_r1, 
                           noncontrol_nu_r1, 
-                          by = c("Var1"_= "Pseudogene1", "Var2" = "Pseudogene2"))
+                          by = c("Var1" = "Pseudogene1", "Var2" = "Pseudogene2"))
 gene.grid.r2 <- left_join(gene.grid.r2, 
                           noncontrol.nu.r2, 
                           by = c("Var1" = "Pseudogene2", "Var2" = "Pseudogene1"))

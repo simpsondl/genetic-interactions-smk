@@ -36,7 +36,7 @@ message(sprintf("[%s] compute_gene_interaction_scores returned %d rows and %d un
                 Sys.time(), nrow(gene_gis), length(unique(gene_gis$PseudogeneCombinationID))))
 
 gene_gis <- left_join(gene_gis, idmap) %>%
-    relocate(Pseudogene1:PseudogeneCombinationName)
+    relocate(PseudogeneA:PseudogeneCombinationName)
 
 write_tsv(gene_gis, snakemake@output[["output_gene_level_scores"]])
 message(sprintf("[%s] Wrote gene-level GI scores to %s", 

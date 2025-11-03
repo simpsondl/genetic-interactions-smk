@@ -1,4 +1,42 @@
-library(dplyr)
+### Helper: resolve column-name prefixes to column indices
+### Inputs:
+### ### colnames_vec - character vector of column names (e.g. colnames(counts))
+### ### prefixes_param - either a character vector, a single comma-separated string,
+### ###                  or a list (from Snakemake params) of prefixes to match
+### Output: list(indices = integer vector of 1-based column indices, prefixes = character vector)
+resolve_count_prefixes <- function(colnames_vec, prefixes_param) {
+  if (is.null(prefixes_param)) {
+    stop("counts_prefixes not provided")
+  }
+  # normalize to character vector
+  if (!is.character(prefixes_param)) {
+    prefixes <- unlist(prefixes_param)
+  } else if (length(prefixes_param) == 1 && grepl(",", prefixes_param)) {
+    prefixes <- strsplit(prefixes_param, ",")[[1]]
+    prefixes <- trimws(prefixes)
+  } else {
+    prefixes <- prefixes_param
+  }
+
+  if (length(prefixes) == 1) {
+    matches <- startsWith(colnames_vec, prefixes)
+  } else {
+    matches_list <- lapply(prefixes, function(p) startsWith(colnames_vec, p))
+    matches <- Reduce(`|`, matches_list)
+  }
+
+  indices <- which(matches)
+  if (length(indices) == 0) {
+    stop(sprintf("No columns matched prefixes: %s", paste(prefixes, collapse = ",")))
+  }
+
+  message(sprintf("[%s] resolve_count_prefixes: matched columns for prefixes %s: %s", 
+                  Sys.time(), paste(prefixes, collapse = ","), 
+                  paste(colnames_vec[matches], collapse = ", ")))
+
+  return(list(indices = indices, prefixes = prefixes))
+}
+
 
 ### Function for identifying individual sgRNAs which are poorly represented
 ### in either position A or position B at T0
@@ -55,176 +93,116 @@ filt_combinations <- function(counts, conds, filtersamp, filterthresh) {
   return(counts$ConstructID[which(tmp != 0)])
 }
 
-### Function for calculating individual sgRNA combination phenotypes
+
+### Function for calculating correlations between single and combinatorial phenotypes for a single phenotype
 ### Inputs:
-### ### counts - raw count df, import from file
-### ### conds - condition df, maps sample and replicate information to column names
-### ### pseudocount - pseudocount to add to all raw count values, default 10
-### ### normalize - normalize phenotypes to non-targeting controls and population doublings, default TRUE
-### ### doublings - vector containing total population doublings in the following order:
-### ### ### DMSO Replicate 1
-### ### ### DMSO Replicate 2
-### ### ### Niraparib Replicate 1
-### ### ### Niraparib Replicate 2
-### Outputs:
-### ### df containing gamma, tau, and rho phenotypes for all combinations present
-calculate_phenotypes <- function(counts, conds, pseudocount = 10, normalize = TRUE, doublings) {
-  pseudo <- counts[, colnames(counts) %in% conds$Colname] + pseudocount
-  fracs <- sweep(pseudo, 2, colSums(pseudo), FUN = "/")
-  phenos <- data.frame(Gamma.R1 = log2(fracs$DMSO.R1 / fracs$T0.R1),
-                       Gamma.R2 = log2(fracs$DMSO.R2 / fracs$T0.R2),
-                       Tau.R1 = log2(fracs$NIRAP.R1 / fracs$T0.R1),
-                       Tau.R2 = log2(fracs$NIRAP.R2 / fracs$T0.R2),
-                       Rho.R1 = log2(fracs$NIRAP.R1 / fracs$DMSO.R1),
-                       Rho.R2 = log2(fracs$NIRAP.R2 / fracs$DMSO.R2))
-  phenos <- cbind(counts[, 1:13], phenos)
-  
-  if (normalize) {
-    nt_gamma_r1 <- median(phenos$Gamma.R1[phenos$Category == "NT+NT"])
-    nt_gamma_r2 <- median(phenos$Gamma.R2[phenos$Category == "NT+NT"])
-    nt_tau_r1 <- median(phenos$Tau.R1[phenos$Category == "NT+NT"])
-    nt_tau_r2 <- median(phenos$Tau.R2[phenos$Category == "NT+NT"])
-    nt_rho_r1 <- median(phenos$Rho.R1[phenos$Category == "NT+NT"])
-    nt_rho_r2 <- median(phenos$Rho.R2[phenos$Category == "NT+NT"])
-
-    phenos$Gamma.R1 <- (phenos$Gamma.R1 - nt_gamma_r1) / doublings[1]
-    phenos$Gamma.R2 <- (phenos$Gamma.R2 - nt_gamma_r2) / doublings[2]
-    phenos$Tau.R1 <- (phenos$Tau.R1 - nt_tau_r1) / doublings[3]
-    phenos$Tau.R2 <- (phenos$Tau.R2 - nt_tau_r2) / doublings[4]
-    phenos$Rho.R1 <- (phenos$Rho.R1 - nt_rho_r1) / (doublings[1] - doublings[3])
-    phenos$Rho.R2 <- (phenos$Rho.R2 - nt_rho_r2) / (doublings[2] - doublings[4])
-  }
-
-  phenos$Gamma.Avg <- rowMeans(phenos[, c("Gamma.R1", "Gamma.R2")])
-  phenos$Tau.Avg <- rowMeans(phenos[, c("Tau.R1", "Tau.R2")])
-  phenos$Rho.Avg <- rowMeans(phenos[, c("Rho.R1", "Rho.R2")])
-  # rearranges dataframe to have averages next to individual replicates
-  return(phenos[, c(1:15, 20, 16, 17, 21, 18, 19, 22)])
-}
-
-### Function for calculating orientation independent, averaged sgRNA combination phenotypes
-### Inputs:
-### ### phenos - output from calculate_phenotypes function, OR a df containing columns:
-### ### ### Gamma.R1, Gamma.R2
-### ### ### Tau.R1, Tau.R2
-### ### ### GuideCombinationID with IDs beginning with sgc_
-### Outputs:
-### ### df containing orientation-independent phenotypes for all replicates and avg replicate
-calculate_averaged_phenotypes <- function(phenos) {
-  orind <- phenos %>% 
-            group_by(GuideCombinationID) %>% 
-              summarise(Gamma.OI.R1 = mean(Gamma.R1),
-                        Gamma.OI.R2 = mean(Gamma.R2),
-                        Gamma.OI.Avg = mean(Gamma.Avg),
-                        Tau.OI.R1 = mean(Tau.R1),
-                        Tau.OI.R2 = mean(Tau.R2),
-                        Tau.OI.Avg = mean(Tau.Avg),
-                        Rho.OI.R1 = mean(Rho.R1),
-                        Rho.OI.R2 = mean(Rho.R2),
-                        Rho.OI.Avg = mean(Rho.Avg),
-                        N = n())
-  orind <- orind[order(as.numeric(gsub("sgc_", "", orind$GuideCombinationID))), ]
-  return(orind)
-}
-
-### Function for calculating phenotypes for individual sgRNAs using non-targeting guides
-### Inputs:
-### ### phenos - output from calculate_phenotypes function
-### Outputs:
-### ### df containing single sgRNA phenotypes by replicate
-calculate_single_sgrna_phenotypes <- function(phenos) {
-  # Create dataframe for saving results
-  single_pheno <- data.frame("sgRNA.ID" = unique(c(phenos$FirstPosition, phenos$SecondPosition)), 
-                             "Gamma.OI.R1" = 0, 
-                             "Gamma.OI.R2" = 0,
-                             "Gamma.OI.Avg" = 0,
-                             "Tau.OI.R1" = 0,
-                             "Tau.OI.R2" = 0,
-                             "Tau.OI.Avg" = 0,
-                             "Rho.OI.R1" = 0,
-                             "Rho.OI.R2" = 0,
-                             "Rho.OI.Avg" = 0,
-                             "N" = 0)
-  
-  for (i in seq_len(nrow(single_pheno))){
-    if (i %% 100 == 0) {
-            progress_pct <- round((i / nrow(single_pheno)) * 100, 1)
-            message(sprintf("[%s] Processing sgRNA %d/%d (%s percent) - ID: %s", 
-                            Sys.time(), i, nrow(single_pheno), progress_pct, single_pheno$sgRNA.ID[i]))
-        }
-
-    # Handle non-targeting case
-    if (grepl("non-targeting", single_pheno$sgRNA.ID[i])) {
-      # Extract all non-targeting guide combinations with desired non-targeting guide in position A or B
-      # If this is not handled explicitly, will aggregate all NT guides into a glob
-      tmp <- phenos[(phenos$FirstPosition == single_pheno$sgRNA.ID[i] &
-                                phenos$SecondPosition %in% unique(phenos$FirstPosition[phenos$Category == "NT+NT"])) | 
-                               (phenos$SecondPosition == single_pheno$sgRNA.ID[i] &
-                                  phenos$FirstPosition %in% unique(phenos$FirstPosition[phenos$Category == "NT+NT"])), ]
-      single_pheno$Gamma.OI.R1[i] <- mean(tmp$Gamma.R1)
-      single_pheno$Gamma.OI.R2[i] <- mean(tmp$Gamma.R2)
-      single_pheno$Gamma.OI.Avg[i] <- mean(tmp$Gamma.Avg)
-      single_pheno$Tau.OI.R1[i] <- mean(tmp$Tau.R1)
-      single_pheno$Tau.OI.R2[i] <- mean(tmp$Tau.R2)
-      single_pheno$Tau.OI.Avg[i] <- mean(tmp$Tau.Avg)
-      single_pheno$Rho.OI.R1[i] <- mean(tmp$Rho.R1)
-      single_pheno$Rho.OI.R2[i] <- mean(tmp$Rho.R2)
-      single_pheno$Rho.OI.Avg[i] <- mean(tmp$Rho.Avg)
-      single_pheno$N[i] <- nrow(tmp)
-    }  else {     
-      # Handle targeting case
-      # Extract all combinations with desired targeting guide in position A or B and non-targeting guide in other
-      # Easier to do this since we can just grab all non-targeting at once
-      tmp <- phenos[(phenos$FirstPosition == single_pheno$sgRNA.ID[i] | 
-                      phenos$SecondPosition == single_pheno$sgRNA.ID[i]) & 
-                    (phenos$FirstPosition %in% unique(phenos$FirstPosition[phenos$Category == "NT+NT"]) | 
-                      phenos$SecondPosition %in% unique(phenos$FirstPosition[phenos$Category == "NT+NT"])), ]
-      single_pheno$Gamma.OI.R1[i] <- mean(tmp$Gamma.R1)
-      single_pheno$Gamma.OI.R2[i] <- mean(tmp$Gamma.R2)
-      single_pheno$Gamma.OI.Avg[i] <- mean(tmp$Gamma.Avg)
-      single_pheno$Tau.OI.R1[i] <- mean(tmp$Tau.R1)
-      single_pheno$Tau.OI.R2[i] <- mean(tmp$Tau.R2)
-      single_pheno$Tau.OI.Avg[i] <- mean(tmp$Tau.Avg)
-      single_pheno$Rho.OI.R1[i] <- mean(tmp$Rho.R1)
-      single_pheno$Rho.OI.R2[i] <- mean(tmp$Rho.R2)
-      single_pheno$Rho.OI.Avg[i] <- mean(tmp$Rho.Avg)
-      single_pheno$N[i] <- nrow(tmp)
-    }
-  }
-  return(single_pheno)
-}
-
-### Function for calculating correlations between single and combinatorial phenotypes for all sgRNAs
-### Inputs:
-### ### combphenos - output from calculate_phenotypes function
-### ### singlephenos - output from calculate_single_sgRNA_phenotypes
+### ### combphenos - output from calculate_phenotypes function (must include phenotype OI columns)
+### ### singlephenos - output from calculate_single_sgRNA_phenotypes (must include phenotype OI columns)
+### ### phenotype - string, e.g. "Gamma" or "Tau"
+### ### filter_mode - one of "avg_only", "any", "all" (determines which columns to test and fail logic)
 ### ### filterthresh - the minimum correlation to not flag an sgRNA for filtering, default 0.25
 ### Outputs:
-### ### list containing four elements, in order:
-### ### ### df of all calculated correlations
-### ### ### sgRNA ids below threshold, gamma phenotypes
-### ### ### sgRNA ids below threshold, tau phenotypes
-### ### ### sgRNA ids below threshold, rho phenotypes
-filt_nocorrelation <- function(combphenos, singlephenos, filterthresh = 0.25) {
-  cors <- data.frame(sgRNA.ID = singlephenos$sgRNA.ID,
-                     Gamma.OI.Correlation = NA,
-                     Tau.OI.Correlation = NA,
-                     Rho.OI.Correlation = NA)
-  
-  for (i in singlephenos$sgRNA.ID){
-    tmp <- combphenos[combphenos$SecondPosition == i, c(colnames(combphenos)[1:9],
-                                                      "Gamma.OI.Avg", "Tau.OI.Avg", "Rho.OI.Avg")]
-    tmp <- merge(tmp, singlephenos[, c("sgRNA.ID", "Gamma.OI.Avg", "Tau.OI.Avg", "Rho.OI.Avg")],
-                 by.x = "FirstPosition", by.y = "sgRNA.ID", suffix = c(".Comb", ".Single"))
-    cors$Gamma.OI.Correlation[cors$sgRNA.ID == i] <- cor(tmp[, "Gamma.OI.Avg.Comb"], tmp[, "Gamma.OI.Avg.Single"])
-    cors$Tau.OI.Correlation[cors$sgRNA.ID == i] <- cor(tmp[, "Tau.OI.Avg.Comb"], tmp[, "Tau.OI.Avg.Single"])
-    cors$Rho.OI.Correlation[cors$sgRNA.ID == i] <- cor(tmp[, "Rho.OI.Avg.Comb"], tmp[, "Rho.OI.Avg.Single"])
+### ### list containing three elements:
+### ### ### df with columns sgRNA.ID, one Correlation column per tested suffix, and FailedColumns (comma-separated)
+### ### ### character vector of sgRNA ids that fail overall based on filter_mode
+### ### ### df with summary stats: Column, N_Tested, N_Failed
+filt_nocorrelation <- function(combphenos, singlephenos, phenotype, filter_mode = "avg_only", filterthresh = 0.25) {
+  if (missing(phenotype) || !is.character(phenotype) || length(phenotype) != 1) {
+    stop("filt_nocorrelation requires a single phenotype name as a string (e.g. 'Gamma')")
   }
   
-  return(list(cors,
-              cors$sgRNA.ID[cors$Gamma.OI.Correlation < filterthresh],
-              cors$sgRNA.ID[cors$Tau.OI.Correlation < filterthresh],
-              cors$sgRNA.ID[cors$Rho.OI.Correlation < filterthresh]))
+  if (!(filter_mode %in% c("avg_only", "any", "all"))) {
+    stop(sprintf("filter_mode must be one of: avg_only, any, all. Got: %s", filter_mode))
+  }
+
+  # Find all available OI columns for this phenotype
+  oi_pattern <- paste0("^", phenotype, "\\.OI\\.")
+  available_oi_cols_comb <- grep(oi_pattern, colnames(combphenos), value = TRUE)
+  available_oi_cols_single <- grep(oi_pattern, colnames(singlephenos), value = TRUE)
+  
+  # Determine which columns to filter on based on mode
+  if (filter_mode == "avg_only") {
+    filter_cols <- grep("\\.Avg$", available_oi_cols_comb, value = TRUE)
+    if (length(filter_cols) == 0) {
+      stop(sprintf("filter_mode='avg_only' but no .Avg column found for phenotype '%s'", phenotype))
+    }
+  } else {
+    # For "any" or "all", use all available OI columns
+    filter_cols <- available_oi_cols_comb
+  }
+  
+  # Verify columns exist in both tables
+  missing_single <- setdiff(filter_cols, available_oi_cols_single)
+  if (length(missing_single) > 0) {
+    stop(sprintf("singlephenos is missing required columns for phenotype '%s': %s", 
+                 phenotype, paste(missing_single, collapse = ", ")))
+  }
+  
+  message(sprintf("[%s]   Filter mode: %s; testing columns: %s", 
+                  Sys.time(), filter_mode, paste(filter_cols, collapse = ", ")))
+  
+  # Initialize results dataframe with sgRNA.ID and one column per filter_col
+  cors <- data.frame(sgRNA.ID = singlephenos$sgRNA.ID, stringsAsFactors = FALSE)
+  for (col in filter_cols) {
+    cors[[col]] <- NA_real_
+  }
+  
+  # Compute correlations for each sgRNA and each filter column
+  for (i in singlephenos$sgRNA.ID) {
+    for (col in filter_cols) {
+      tmp <- combphenos[combphenos$SecondPosition == i, c(colnames(combphenos)[1:9], col)]
+      tmp <- merge(tmp, singlephenos[, c("sgRNA.ID", col)], 
+                   by.x = "FirstPosition", by.y = "sgRNA.ID", suffixes = c(".Comb", ".Single"))
+      
+      comb_name <- paste0(col, ".Comb")
+      sing_name <- paste0(col, ".Single")
+      
+      # Require at least two non-NA pairs to compute a correlation
+      if (nrow(tmp) < 2 || all(is.na(tmp[[comb_name]])) || all(is.na(tmp[[sing_name]]))) {
+        cors[[col]][cors$sgRNA.ID == i] <- NA_real_
+      } else {
+        cors[[col]][cors$sgRNA.ID == i] <- suppressWarnings(cor(tmp[[comb_name]], 
+                                                                 tmp[[sing_name]], 
+                                                                 use = "pairwise.complete.obs"))
+      }
+    }
+  }
+  
+  # Determine which sgRNAs fail each column
+  fail_matrix <- as.data.frame(sapply(filter_cols, function(col) {
+    !is.na(cors[[col]]) & cors[[col]] < filterthresh
+  }))
+  colnames(fail_matrix) <- filter_cols
+  
+  # Apply filtering logic based on mode
+  if (filter_mode == "any") {
+    fail_overall <- apply(fail_matrix, 1, any)
+  } else if (filter_mode == "all") {
+    fail_overall <- apply(fail_matrix, 1, all)
+  } else { # avg_only
+    fail_overall <- fail_matrix[[filter_cols[1]]]
+  }
+  
+  # Add FailedColumns column (comma-separated list of columns that failed)
+  cors$FailedColumns <- apply(fail_matrix, 1, function(row) {
+    failed <- names(row)[row]
+    if (length(failed) == 0) return("")
+    paste(failed, collapse = ", ")
+  })
+  
+  # Get list of failing sgRNAs
+  failing_sgrnas <- cors$sgRNA.ID[fail_overall]
+  
+  # Create summary statistics
+  summary_stats <- data.frame(
+    Column = filter_cols,
+    N_Tested = sapply(filter_cols, function(col) sum(!is.na(cors[[col]]))),
+    N_Failed = sapply(filter_cols, function(col) sum(!is.na(cors[[col]]) & cors[[col]] < filterthresh)),
+    stringsAsFactors = FALSE
+  )
+  summary_stats$Pct_Failed <- round(100 * summary_stats$N_Failed / summary_stats$N_Tested, 2)
+  
+  return(list(cors, failing_sgrnas, summary_stats))
 }
 
 ### Function for calculating interaction scores
@@ -248,7 +226,7 @@ compute_gis <- function(query, singlepheno_df, pairpheno_df, phenocol) {
   tmp_data_merge <- merge(tmp_data, pairpheno_df[pairpheno_df$SecondPosition == query, 
                                                  c("ConstructID",  "GuideCombinationID", "Identical",
                                                    "FirstPseudogene", "SecondPseudogene", "PseudogeneCombinationID",
-                                                   "Orientation", "GeneCombinationID", "Category",
+                                                   "Orientation", "Category",
                                                    "FirstPosition", phenocol)], 
                           by.x = "sgRNA.id", by.y = "FirstPosition", all.x = TRUE)
   
@@ -278,7 +256,7 @@ compute_gis <- function(query, singlepheno_df, pairpheno_df, phenocol) {
     
     ### Order dataframe
     tmp_data_merge <- tmp_data_merge[order(tmp_data_merge$GI), c("ConstructID", "GuideCombinationID", 
-                                                                 "PseudogeneCombinationID", "GeneCombinationID", 
+                                                                 "PseudogeneCombinationID", 
                                                                  "FirstPseudogene", "SecondPseudogene",
                                                                  "Orientation", "Identical", "Category", "Control",
                                                                  "sgRNA.id", "query", "single", phenocol, "Expected",
@@ -400,8 +378,8 @@ assess_sgcscore_variance <- function(congis, genegis) {
     }
 
     row_gen <- dt_gen[PseudogeneCombinationID == i]
-    gene1 <- row_gen$Pseudogene1[1]
-    gene2 <- row_gen$Pseudogene2[1]
+    gene1 <- row_gen$PseudogeneA[1]
+    gene2 <- row_gen$PseudogeneB[1]
 
     # Fast subset: get all rows where SecondPseudogene is gene1 or gene2
     tmp <- dt_con[J(c(gene1, gene2)), nomatch = 0]
@@ -436,12 +414,32 @@ assess_sgcscore_variance <- function(congis, genegis) {
   return(as.data.frame(dt_gen))
 }
 
-compute_construct_diff_scores <- function(gamma, tau) {
-  info_cols <- c(colnames(gamma)[1:12], "GI.z") #meta info columns + GI scores
-  pm <- inner_join(gamma[, colnames(gamma) %in% info_cols], 
-                   tau[, colnames(tau) %in% info_cols],
-                   by = info_cols[1:12],
-                   suffix = c(".Gamma", ".Tau"))
-  pm$GI.z <- pm$GI.z.Tau - pm$GI.z.Gamma
+compute_construct_diff_scores <- function(reference, treated, 
+                                          reference_name = "Gamma", treated_name = "Tau",
+                                          info_cols = NULL) {
+  if (is.null(info_cols)) {
+    info_cols <- c("ConstructID", "GuideCombinationID", "PseudogeneCombinationID",
+                   "FirstPseudogene", "SecondPseudogene", "Category", "Control", 
+                   "Identical", "Orientation", "sgRNA.id", "query")
+  }
+  
+  # Generic differential calculator: treated - reference for GI.z
+  complete_info_cols <- c(info_cols, "GI.z") # meta info columns + GI scores
+  suffix1 <- paste0(".", reference_name)
+  suffix2 <- paste0(".", treated_name)
+
+  pm <- inner_join(reference[, colnames(reference) %in% complete_info_cols], 
+                   treated[, colnames(treated) %in% complete_info_cols],
+                   by = info_cols,
+                   suffix = c(suffix1, suffix2))
+
+  # Construct GI.z difference: treated - reference
+  gi_col_treated <- paste0("GI.z", suffix2)
+  gi_col_reference <- paste0("GI.z", suffix1)
+  if (!(gi_col_treated %in% colnames(pm)) || !(gi_col_reference %in% colnames(pm))) {
+    stop(sprintf("Expected GI.z columns '%s' and '%s' in joined table", 
+                 gi_col_reference, gi_col_treated))
+  }
+  pm$GI.z <- pm[[gi_col_treated]] - pm[[gi_col_reference]]
   return(pm)
 }

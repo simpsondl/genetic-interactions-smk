@@ -17,11 +17,55 @@ orind_phenotypes <- read_tsv(snakemake@input[["input_orientation_indep_phenotype
 single_phenotypes <- read_tsv(snakemake@input[["input_single_sgRNA_phenotypes"]])
 to_filt <- read_tsv(snakemake@input[["input_filter_flags"]])
 
+# Determine phenotypes to process (passed from Snakemake params)
+phenos_all <- snakemake@params[["phenotypes"]]
+if (is.null(phenos_all) || length(phenos_all) == 0) {
+  # default order if not provided
+  phenos_all <- c("Gamma", "Tau", "Rho")
+}
+
+# Optional mapping from config telling which phenotypes should have the
+# no-correlation filter applied. If provided, it should be a named list of
+# booleans, e.g. list(Gamma=TRUE, Tau=TRUE, Rho=FALSE). The order of
+# phenos_all determines the processing order.
+no_corr_map <- snakemake@params[["no_correlation_filter"]]
+phenos_to_process <- character(0)
+if (!is.null(no_corr_map) && length(no_corr_map) > 0) {
+  # If user provided a character vector, treat it as an ordered list of
+  # phenotypes to filter (preserves user order).
+  if (is.character(no_corr_map)) {
+    phenos_to_process <- no_corr_map[no_corr_map %in% phenos_all]
+  } 
+} else {
+  # If no mapping provided, default to processing all phenos in phenos_all
+  phenos_to_process <- phenos_all
+}
+
+# Determine replicates (if provided) to identify expected OI columns (R1, R2, ...)
+replicates <- snakemake@params[["replicates"]]
+if (is.null(replicates)) {
+  # default fallback if not provided
+  replicates <- c("R1", "R2")
+}
+
+# Build the list of orientation-independent columns for ALL phenotypes (not just filtered ones)
+# This ensures Rho OI columns are joined even if Rho isn't in NO_CORRELATION_FILTER
+expected_oi_cols <- c("GuideCombinationID")
+for (p in phenos_all) {
+  for (r in replicates) expected_oi_cols <- c(expected_oi_cols, paste0(p, ".OI.", r))
+  expected_oi_cols <- c(expected_oi_cols, paste0(p, ".OI.Avg"))
+}
+
+# Fail fast if expected columns are missing
+missing_cols <- setdiff(expected_oi_cols, colnames(orind_phenotypes))
+if (length(missing_cols) > 0) {
+  stop(sprintf("apply_correlation_filter: missing expected orientation-independent columns: %s",
+               paste(missing_cols, collapse = ", ")))
+}
+
+# Join only the required OI columns into the raw phenotype table
 raw_phenotypes <- left_join(raw_phenotypes,
-                            orind_phenotypes[, c("GuideCombinationID", 
-                                                 "Gamma.OI.R1", "Gamma.OI.R2", "Gamma.OI.Avg", 
-                                                 "Tau.OI.R1", "Tau.OI.R2", "Tau.OI.Avg", 
-                                                 "Rho.OI.R1", "Rho.OI.R2", "Rho.OI.Avg")],
+                            orind_phenotypes[, expected_oi_cols],
                             by = "GuideCombinationID")
 
 message(sprintf("[%s] apply_correlation_filter.R starting", Sys.time()))
@@ -35,45 +79,103 @@ message(sprintf("[%s] Number of single-phenotype rows: %d", Sys.time(), nrow(sin
 message(sprintf("[%s] Number of filter-flag rows: %d", Sys.time(), nrow(to_filt)))
 
 # Identify single sgRNAs whose combinatorial and single phenotypes do not correlate
-# Returns a list with four elements, first is a dataframe of all calculated correlations,
-# second element is gamma sgRNAs which failed filter, and third is tau sgRNAs which failed filter
-message(sprintf("[%s] Starting filt_nocorrelation (threshold=%s)", Sys.time(), 
-                snakemake@params[["no_correlation_threshold"]]))
-nocorr_filt <- filt_nocorrelation(combphenos = raw_phenotypes,
-                                  singlephenos = single_phenotypes,
-                                  filterthresh = snakemake@params[["no_correlation_threshold"]])
-message(sprintf("[%s] filt_nocorrelation completed: correlation table rows=%d", Sys.time(), nrow(nocorr_filt[[1]])))
-message(sprintf("[%s] Number of Gamma sgRNAs failing correlation: %d", Sys.time(), length(nocorr_filt[[2]])))
-message(sprintf("[%s] Number of Tau sgRNAs failing correlation: %d", Sys.time(), length(nocorr_filt[[3]])))
+message(sprintf("[%s] Starting per-phenotype correlation filtering (threshold=%s)", 
+                Sys.time(), snakemake@params[["no_correlation_threshold"]]))
 
-# show first few failing sgRNAs for quick inspection
-if (length(nocorr_filt[[2]]) > 0) message(sprintf("[%s] Example Gamma failures: %s", 
-                                               Sys.time(), paste(head(nocorr_filt[[2]], 5), collapse = ", ")))
-if (length(nocorr_filt[[3]]) > 0) message(sprintf("[%s] Example Tau failures: %s", 
-                                               Sys.time(), paste(head(nocorr_filt[[3]], 5), collapse = ", ")))
+# Get filter mode from params (default to avg_only)
+filter_mode <- snakemake@params[["correlation_filter_mode"]]
+if (is.null(filter_mode)) {
+  filter_mode <- "avg_only"
+}
+message(sprintf("[%s] Correlation filter mode: %s", Sys.time(), filter_mode))
 
-# Pull out filteredphenotypes for interaction scores
-phenos_gamma_filt <- raw_phenotypes[!(raw_phenotypes$FirstPosition %in% nocorr_filt[[2]]) &
-                                  !(raw_phenotypes$SecondPosition %in% nocorr_filt[[2]]), ]
-single_gamma_pheno_filt <- single_phenotypes[!(single_phenotypes$sgRNA.ID %in% nocorr_filt[[2]]), ]
+# We'll collect correlation tables and summaries for all phenotypes
+all_corrs <- list()
+all_summaries <- list()
+pheno_filtered <- raw_phenotypes
+single_pheno_filtered <- single_phenotypes
 
+for (p in phenos_to_process) {
+  message(sprintf("[%s] Processing phenotype: %s", Sys.time(), p))
 
-phenos_tau_filt <- raw_phenotypes[!(raw_phenotypes$FirstPosition %in% nocorr_filt[[2]]) &
-                                  !(raw_phenotypes$SecondPosition %in% nocorr_filt[[2]]) &
-                                    !(raw_phenotypes$FirstPosition %in% nocorr_filt[[3]]) &
-                                      !(raw_phenotypes$SecondPosition %in% nocorr_filt[[3]]), ]
-single_tau_pheno_filt <- single_phenotypes[!(single_phenotypes$sgRNA.ID %in% nocorr_filt[[2]]) &
-                                    !(single_phenotypes$sgRNA.ID %in% nocorr_filt[[3]]), ]
+  res <- filt_nocorrelation(combphenos = pheno_filtered,
+                            singlephenos = single_pheno_filtered,
+                            phenotype = p,
+                            filter_mode = filter_mode,
+                            filterthresh = snakemake@params[["no_correlation_threshold"]])
 
-# Flag filtered constructs that were not previously filtered
-to_filt$Flag[(to_filt$FirstPosition %in% nocorr_filt[[2]] |
-                to_filt$SecondPosition %in% nocorr_filt[[2]]) &
-             is.na(to_filt$Flag)] <- "No correlation - Gamma phenotype - no gGI or tGI scores"
-# If an sgRNA was filtered due to having no gamma correlation, that sgRNA will not be flagged if
-# it also had no tau correlation.
-to_filt$Flag[(to_filt$FirstPosition %in% nocorr_filt[[3]] |
-                to_filt$SecondPosition %in% nocorr_filt[[3]]) &
-             is.na(to_filt$Flag)] <- "No correlation - Tau phenotype - no tGI scores"
+  cors_tbl <- res[[1]]
+  failing_sgrnas <- res[[2]]
+  summary_stats <- res[[3]]
+
+  message(sprintf("[%s] %s: correlation table rows=%d; failing sgRNAs=%d", 
+                  Sys.time(), p, nrow(cors_tbl), length(failing_sgrnas)))
+  if (length(failing_sgrnas) > 0) {
+    message(sprintf("[%s] Example %s failures: %s", 
+                    Sys.time(), p, paste(head(failing_sgrnas, 5), collapse = ", ")))
+  }
+  
+  # Log summary statistics
+  message(sprintf("[%s] %s summary by column:", Sys.time(), p))
+  for (i in seq_len(nrow(summary_stats))) {
+    message(sprintf("[%s]   %s: %d/%d failed (%.1f percent)", 
+                    Sys.time(), summary_stats$Column[i], 
+                    summary_stats$N_Failed[i], summary_stats$N_Tested[i],
+                    summary_stats$Pct_Failed[i]))
+  }
+
+  # Attach phenotype label and store
+  # Rename correlation columns to generic names to allow rbind across phenotypes
+  cor_cols <- grep("^.+\\.OI\\.", colnames(cors_tbl), value = TRUE)
+  for (j in seq_along(cor_cols)) {
+    old_name <- cor_cols[j]
+    new_name <- paste0("Correlation_", j)
+    colnames(cors_tbl)[colnames(cors_tbl) == old_name] <- new_name
+  }
+  cors_tbl$Phenotype <- p
+  cors_tbl$TestedColumns <- paste(cor_cols, collapse = ", ")
+  summary_stats$Phenotype <- p
+  all_corrs[[p]] <- cors_tbl
+  all_summaries[[p]] <- summary_stats
+
+  # Pull out filtered phenotypes for interaction scores for this phenotype
+  pheno_filtered <- pheno_filtered[!(pheno_filtered$FirstPosition %in% failing_sgrnas) &
+                                     !(pheno_filtered$SecondPosition %in% failing_sgrnas), ]
+  single_pheno_filtered <- single_pheno_filtered[!(single_pheno_filtered$sgRNA.ID %in% failing_sgrnas), ]
+
+  # Update global filter flags (preserve existing non-NA flags)
+  flag_msg <- sprintf("No correlation - %s phenotype - no %sGI scores", p, tolower(p))
+  to_filt$Flag[(to_filt$FirstPosition %in% failing_sgrnas |
+                to_filt$SecondPosition %in% failing_sgrnas) &
+               is.na(to_filt$Flag)] <- flag_msg
+
+  # Write per-phenotype outputs if the output keys exist (they will if rule was generated dynamically)
+  out_constructs_key <- paste0("output_filtered_", tolower(p), "_phenotypes")
+  out_single_key <- paste0("output_filtered_", tolower(p), "_single_sgRNA_phenotypes")
+
+  if (!is.null(snakemake@output[[out_constructs_key]])) {
+    write_tsv(pheno_filtered, snakemake@output[[out_constructs_key]])
+    message(sprintf("[%s] Wrote %s filtered constructs to %s", Sys.time(), p, snakemake@output[[out_constructs_key]]))
+  } else {
+    message(sprintf("[%s] No snakemake output configured for %s constructs (key=%s); skipping write", 
+                    Sys.time(), p, out_constructs_key))
+  }
+
+  if (!is.null(snakemake@output[[out_single_key]])) {
+    write_tsv(single_pheno_filtered, snakemake@output[[out_single_key]])
+    message(sprintf("[%s] Wrote %s filtered single-sgRNA phenotypes to %s", 
+                    Sys.time(), p, snakemake@output[[out_single_key]]))
+  } else {
+    message(sprintf("[%s] No snakemake output configured for %s single sgRNA (key=%s); skipping write", 
+                     Sys.time(), p, out_single_key))
+  }
+}
+
+# Combine all per-phenotype correlation tables and summaries
+combined_corrs <- do.call(rbind, all_corrs)
+combined_summaries <- do.call(rbind, all_summaries)
+message(sprintf("[%s] Combined correlation table rows=%d", Sys.time(), nrow(combined_corrs)))
+message(sprintf("[%s] Combined summary table rows=%d", Sys.time(), nrow(combined_summaries)))
 
 # Summarize flags after correlation filter
 flag_summary <- to_filt %>% 
@@ -87,13 +189,14 @@ message(sprintf("[%s] Flag summary after correlation filter:\n%s",
 # Save flags to file
 write_tsv(to_filt, snakemake@output[["output_full_filter_flags"]])
 
-# Save filtered phenotypes to file
-write_tsv(phenos_gamma_filt, snakemake@output[["output_filtered_gamma_phenotypes"]])
-write_tsv(single_gamma_pheno_filt, snakemake@output[["output_filtered_gamma_single_sgRNA_phenotypes"]])
-write_tsv(phenos_tau_filt, snakemake@output[["output_filtered_tau_phenotypes"]])
-write_tsv(single_tau_pheno_filt, snakemake@output[["output_filtered_tau_single_sgRNA_phenotypes"]])
+# Save combined correlation results to file
+write_tsv(combined_corrs, snakemake@output[["output_correlation_results"]])
+message(sprintf("[%s] Wrote combined correlation results to %s", 
+                Sys.time(), snakemake@output[["output_correlation_results"]]))
 
-
-# Save correlation results to file
-write_tsv(nocorr_filt[[1]], snakemake@output[["output_correlation_results"]])
-message(sprintf("[%s] Wrote correlation results to %s", Sys.time(), snakemake@output[["output_correlation_results"]]))
+# Save combined summary statistics to file (if output exists)
+if (!is.null(snakemake@output[["output_correlation_summary"]])) {
+  write_tsv(combined_summaries, snakemake@output[["output_correlation_summary"]])
+  message(sprintf("[%s] Wrote correlation summary statistics to %s", 
+                  Sys.time(), snakemake@output[["output_correlation_summary"]]))
+}

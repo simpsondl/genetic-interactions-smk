@@ -1,128 +1,120 @@
 rule plot_figure_1d:
     input:
         # use the consolidated construct scores file and subset inside the plotting script
-        input_gamma="../outputs/gi_scores/screen2023/construct_scores/all_gis_Gamma.OI.Avg.tsv"
+        input_gamma=f"{OUTPUTS_DIR}/gi_scores/screen2023/construct_scores/all_gis_Gamma.OI.Avg.tsv"
     output:
-        output_figure_1d="../outputs/manuscript_figures/figure_1d.svg"
+        output_figure_1d=f"{OUTPUTS_DIR}/manuscript_figures/figure_1d.svg"
     log:
-        "../outputs/logs/manuscript_figures/plot_figure_1d.log"
+        f"{LOGS_DIR}/manuscript_figures/plot_figure_1d.log"
     script:
         "../scripts/manuscript_figures/plot_figure_1d.R"
 
 rule plot_figure_1e:
     input:
         # use the consolidated construct scores file and subset inside the plotting script
-        input_tau="../outputs/gi_scores/screen2023/construct_scores/all_gis_Tau.OI.Avg.tsv"
+        input_tau=f"{OUTPUTS_DIR}/gi_scores/screen2023/construct_scores/all_gis_Tau.OI.Avg.tsv"
     output:
-        output_figure_1e="../outputs/manuscript_figures/figure_1e.svg"
+        output_figure_1e=f"{OUTPUTS_DIR}/manuscript_figures/figure_1e.svg"
     log:
-        "../outputs/logs/manuscript_figures/plot_figure_1e.log"
+        f"{LOGS_DIR}/manuscript_figures/plot_figure_1e.log"
     script:
         "../scripts/manuscript_figures/plot_figure_1e.R"
 
 rule plot_figure_2a:
     input:
         # updated paths: differential outputs are now placed with Nu.* naming under construct/gene/discriminant dirs
-        input_nu_r1="../outputs/gi_scores/screen2023/gene_combination_scores/gene_combination_scores_Nu.OI.R1.tsv",
-        input_nu_r2="../outputs/gi_scores/screen2023/gene_combination_scores/gene_combination_scores_Nu.OI.R2.tsv",
-        input_nu_gene_level="../outputs/gi_scores/screen2023/discriminant_scores/discriminant_hits_Nu.OI.Avg.tsv"
+        input_nu_r1=f"{OUTPUTS_DIR}/gi_scores/screen2023/gene_combination_scores/gene_combination_scores_Nu.OI.R1.tsv",
+        input_nu_r2=f"{OUTPUTS_DIR}/gi_scores/screen2023/gene_combination_scores/gene_combination_scores_Nu.OI.R2.tsv",
+        input_nu_gene_level=f"{OUTPUTS_DIR}/gi_scores/screen2023/discriminant_scores/discriminant_hits_Nu.OI.Avg.tsv"
     output:
-        output_figure_2a="../outputs/manuscript_figures/figure_2a.png",
-        output_figure_2a_labels="../outputs/manuscript_figures/figure_2a_labels.png"
+        output_figure_2a=f"{OUTPUTS_DIR}/manuscript_figures/figure_2a.png",
+        output_figure_2a_labels=f"{OUTPUTS_DIR}/manuscript_figures/figure_2a_labels.png"
     log:
-        "../outputs/logs/manuscript_figures/plot_figure_2a.log"
+        f"{LOGS_DIR}/manuscript_figures/plot_figure_2a.log"
     script:
         "../scripts/manuscript_figures/plot_figure_2a.R"
 
 rule plot_figure_2b:
     input:
-        input_nu_r1="../outputs/gi_scores/screen2023/gene_combination_scores/gene_combination_scores_Nu.OI.R1.tsv",
-        input_nu_r2="../outputs/gi_scores/screen2023/gene_combination_scores/gene_combination_scores_Nu.OI.R2.tsv",
-        input_nu_gene_level="../outputs/gi_scores/screen2023/discriminant_scores/discriminant_hits_Nu.OI.Avg.tsv",
-        input_idmap="data/annotations/screen2023_id_to_name_mapping.tsv"
+        input_nu_r1=f"{OUTPUTS_DIR}/gi_scores/screen2023/gene_combination_scores/gene_combination_scores_Nu.OI.R1.tsv",
+        input_nu_r2=f"{OUTPUTS_DIR}/gi_scores/screen2023/gene_combination_scores/gene_combination_scores_Nu.OI.R2.tsv",
+        input_nu_gene_level=f"{OUTPUTS_DIR}/gi_scores/screen2023/discriminant_scores/discriminant_hits_Nu.OI.Avg.tsv",
+        input_idmap=(
+            "data/annotations/screen2023_id_to_name_mapping.tsv" 
+            if config.get("COUNTS_SOURCE") == "counts_metadata" 
+            else f"{OUTPUTS_DIR}/annotations/screen2023_gene_combination_id_map.tsv"
+        )
     output:
-        output_figure_2b="../outputs/manuscript_figures/figure_2b.png",
-        output_figure_2b_labels="../outputs/manuscript_figures/figure_2b_labels.png"
+        output_figure_2b=f"{OUTPUTS_DIR}/manuscript_figures/figure_2b.png",
+        output_figure_2b_labels=f"{OUTPUTS_DIR}/manuscript_figures/figure_2b_labels.png"
     log:
-        "../outputs/logs/manuscript_figures/plot_figure_2b.log"
+        f"{LOGS_DIR}/manuscript_figures/plot_figure_2b.log"
     script:
         "../scripts/manuscript_figures/plot_figure_2b.R"
 
 rule plot_figure_2d:
     input:
-        input_nu="../outputs/gi_scores/screen2023/discriminant_scores/discriminant_hits_Nu.OI.Avg.tsv",
-        input_idmap="data/annotations/screen2023_id_to_name_mapping.tsv"
+        input_nu=f"{OUTPUTS_DIR}/gi_scores/screen2023/discriminant_scores/discriminant_hits_Nu.OI.Avg.tsv",
+        input_idmap=(
+            "data/annotations/screen2023_id_to_name_mapping.tsv" 
+            if config.get("COUNTS_SOURCE") == "counts_metadata" 
+            else f"{OUTPUTS_DIR}/annotations/screen2023_gene_combination_id_map.tsv"
+        )
     output:
-        output_figure_2d_svg="../outputs/manuscript_figures/figure_2d.svg"
+        output_figure_2d_svg=f"{OUTPUTS_DIR}/manuscript_figures/figure_2d.svg"
     log:
-        "../outputs/logs/manuscript_figures/plot_figure_2d.log"
+        f"{LOGS_DIR}/manuscript_figures/plot_figure_2d.log"
     script:
         "../scripts/manuscript_figures/plot_figure_2d.R"
 
 rule plot_figure_3a:
     input:
-        input_gamma="../outputs/gi_scores/screen2023/discriminant_scores/discriminant_hits_Gamma.OI.Avg.tsv",
-        input_tau="../outputs/gi_scores/screen2023/discriminant_scores/discriminant_hits_Tau.OI.Avg.tsv",
-        input_nu="../outputs/gi_scores/screen2023/discriminant_scores/discriminant_hits_Nu.OI.Avg.tsv",
-        input_idmap="data/annotations/screen2023_id_to_name_mapping.tsv"
+        input_gamma=f"{OUTPUTS_DIR}/gi_scores/screen2023/discriminant_scores/discriminant_hits_Gamma.OI.Avg.tsv",
+        input_tau=f"{OUTPUTS_DIR}/gi_scores/screen2023/discriminant_scores/discriminant_hits_Tau.OI.Avg.tsv",
+        input_nu=f"{OUTPUTS_DIR}/gi_scores/screen2023/discriminant_scores/discriminant_hits_Nu.OI.Avg.tsv",
+        input_idmap=(
+            "data/annotations/screen2023_id_to_name_mapping.tsv" 
+            if config.get("COUNTS_SOURCE") == "counts_metadata" 
+            else f"{OUTPUTS_DIR}/annotations/screen2023_gene_combination_id_map.tsv"
+        )
     output:
-        output_figure_3a="../outputs/manuscript_figures/figure_3a.png"
+        output_figure_3a=f"{OUTPUTS_DIR}/manuscript_figures/figure_3a.png"
     log:
-        "../outputs/logs/manuscript_figures/plot_figure_3a.log"
+        f"{LOGS_DIR}/manuscript_figures/plot_figure_3a.log"
     script:
         "../scripts/manuscript_figures/plot_figure_3a.R"
 
 rule plot_figure_3b_negative:
     input:
-        input_gamma="../outputs/gi_scores/screen2023/discriminant_scores/discriminant_hits_Gamma.OI.Avg.tsv",
-        input_tau="../outputs/gi_scores/screen2023/discriminant_scores/discriminant_hits_Tau.OI.Avg.tsv",
-        input_nu="../outputs/gi_scores/screen2023/discriminant_scores/discriminant_hits_Nu.OI.Avg.tsv",
-        input_idmap="data/annotations/screen2023_id_to_name_mapping.tsv"
+        input_gamma=f"{OUTPUTS_DIR}/gi_scores/screen2023/discriminant_scores/discriminant_hits_Gamma.OI.Avg.tsv",
+        input_tau=f"{OUTPUTS_DIR}/gi_scores/screen2023/discriminant_scores/discriminant_hits_Tau.OI.Avg.tsv",
+        input_nu=f"{OUTPUTS_DIR}/gi_scores/screen2023/discriminant_scores/discriminant_hits_Nu.OI.Avg.tsv",
+        input_idmap=(
+            "data/annotations/screen2023_id_to_name_mapping.tsv" 
+            if config.get("COUNTS_SOURCE") == "counts_metadata" 
+            else f"{OUTPUTS_DIR}/annotations/screen2023_gene_combination_id_map.tsv"
+        )
     output:
-        output_figure_3b="../outputs/manuscript_figures/figure_3b_negative.png"
+        output_figure_3b=f"{OUTPUTS_DIR}/manuscript_figures/figure_3b_negative.png"
     log:
-        "../outputs/logs/manuscript_figures/plot_figure_3b_negative.log"
+        f"{LOGS_DIR}/manuscript_figures/plot_figure_3b_negative.log"
     script:
         "../scripts/manuscript_figures/plot_figure_3b_negative.R"
 
 
 rule plot_figure_3b_positive:
     input:
-        input_gamma="../outputs/gi_scores/screen2023/discriminant_scores/discriminant_hits_Gamma.OI.Avg.tsv",
-        input_tau="../outputs/gi_scores/screen2023/discriminant_scores/discriminant_hits_Tau.OI.Avg.tsv",
-        input_nu="../outputs/gi_scores/screen2023/discriminant_scores/discriminant_hits_Nu.OI.Avg.tsv",
-        input_idmap="data/annotations/screen2023_id_to_name_mapping.tsv"
+        input_gamma=f"{OUTPUTS_DIR}/gi_scores/screen2023/discriminant_scores/discriminant_hits_Gamma.OI.Avg.tsv",
+        input_tau=f"{OUTPUTS_DIR}/gi_scores/screen2023/discriminant_scores/discriminant_hits_Tau.OI.Avg.tsv",
+        input_nu=f"{OUTPUTS_DIR}/gi_scores/screen2023/discriminant_scores/discriminant_hits_Nu.OI.Avg.tsv",
+        input_idmap=(
+            "data/annotations/screen2023_id_to_name_mapping.tsv" 
+            if config.get("COUNTS_SOURCE") == "counts_metadata" 
+            else f"{OUTPUTS_DIR}/annotations/screen2023_gene_combination_id_map.tsv"
+        )
     output:
-        output_figure_3b="../outputs/manuscript_figures/figure_3b_positive.png"
+        output_figure_3b=f"{OUTPUTS_DIR}/manuscript_figures/figure_3b_positive.png"
     log:
-        "../outputs/logs/manuscript_figures/plot_figure_3b_positive.log"
+        f"{LOGS_DIR}/manuscript_figures/plot_figure_3b_positive.log"
     script:
         "../scripts/manuscript_figures/plot_figure_3b_positive.R"
-
-# rule cluster_genetic_interaction_scores:
-#     input:
-#         input_gene_level_scores="../outputs/gi_scores/{screen}/gene_combination_scores/gene_combination_scores_{score}.tsv"
-#     output:
-#         output_clustered_scores="../outputs/gi_scores/{screen}/clustered_scores/clustered_gene_combination_scores_{score}.tsv",
-#         output_dendrogram="../outputs/gi_scores/{screen}/clustered_scores/dendrogram_{score}.rds"
-#     log:
-#         "../outputs/logs/{screen}/{screen}_{score}_cluster_genetic_interaction_scores.log"
-#     params:
-#         score=lambda wildcards: wildcards.score,
-#         screen=lambda wildcards: wildcards.screen
-#     script:
-#         "../scripts/cluster_gi_scores.R"
-
-# rule create_circos_plots:
-#     input:
-#         input_gene_level_scores="../outputs/gi_scores/{screen}/gene_combination_scores/gene_combination_scores_{score}.tsv",
-#         input_idmap="data/annotations/{screen}_id_to_name_mapping.tsv"
-#     output:
-#         output_circos_plot="../outputs/gi_scores/{screen}/plots/circos_plot_{score}.png"
-#     log:
-#         "../outputs/logs/{screen}/{screen}_{score}_create_circos_plots.log"
-#     params:
-#         score=lambda wildcards: wildcards.score,
-#         screen=lambda wildcards: wildcards.screen
-#     script:
-#         "../scripts/create_circos_plots.R"

@@ -1,36 +1,151 @@
 ###############################################################################
 ###############################################################################
 
-# Adjustable parameters
+# General settings, adjustable
 
-### List of screen names (lowercase) to process end-to-end. Example: [screen2022, screen2023]
+### Output and log directories
+### All output files and logs will be written to these directories
+OUTPUTS_DIR: ../outputs
+LOGS_DIR: ../logs
+
+### List of screen names to process end-to-end
+### Expected to exactly match filename prefixes in data/counts/
 SCREENS: [screen2022, screen2023]
+
+### Filepath pattern for input counts files
+### Use {screen} as a placeholder for screen names
+### Supports both TSV and ZIP files 
+### ZIP should contain a file ending in _counts.tsv, _counts_only.tsv, or _counts_with_metadata.tsv
+COUNTS_FILEPATH_PATTERN: data/counts/{screen}_raw_counts.zip
+
+###############################################################################
+###############################################################################
+
+# Screen settings, defaults provided but can specify settings per screen
+# by adding a prefix to the parameter name, e.g. SCREEN2023_PHENOTYPE_PREFIX_MAP, etc.
+# See _DOUBLINGS variables below for an example. 
+
+### Counts column prefixes and suffixes
+COUNT_PREFIXES: [T0, DMSO, TREATED]
+REPLICATES: [R1, R2]
+
+### Column name prefix for initial condition counts
+INITIAL_CONDITION_ID: T0
+
+### Default phenotype prefix map, 
+### [<FIRST_PREFIX>, <SECOND_PREFIX>] values must match those in COUNT_PREFIXES
+### Can rename Gamma, Tau, Rho if desired
+### Phenotypes are calculated as <FIRST_PREFIX> / <SECOND_PREFIX>
+PHENOTYPE_PREFIX_MAP:
+  Gamma: [DMSO, T0]
+  Tau: [TREATED, T0]
+  Rho: [TREATED, DMSO]
+
+### Phenotypes to use for genetic interaction score calculation
+### Must match keys in PHENOTYPE_PREFIX_MAP, but doesn't need to be all of them
+GI_PHENOTYPES: [Gamma, Tau]
+
+## Order in which the no correlation filter is applied and to which phenotypes
+### Must match keys in PHENOTYPE_PREFIX_MAP, but doesn't need to be all of them
+NO_CORRELATION_FILTER:
+  - Gamma
+  - Tau
+
+### Default differential interaction score comparisons
+### [<FIRST_PHENOTYPE>, <SECOND_PHENOTYPE>] values must match those in GI_PHENOTYPES
+### Comparisons are calculated as <FIRST_PHENOTYPE> - <SECOND_PHENOTYPE>
+DIFFERENTIAL_COMPARISONS:
+  Nu: [Tau, Gamma]
+
+HIT_THRESHOLDS:
+  Gamma: 0.995
+  Tau: 0.995
+  Rho: 0.995
+  Nu: 1
+
+###############################################################################
+###############################################################################
+
+# Filter parameters, adjustable
+# Cannot be set as screen-specific, settings will apply to all screens that are processed
 
 ### Count filter thresholds
 INDIVIDUAL_SGRNA_MEDIAN_THRESHOLD: 35
 COMBINATION_SGRNA_COUNT_THRESHOLD: 50
 
-### Counts column positions in counts files
-SCREEN2022_COUNTS_COLUMNS: [14, 15, 16, 17, 18, 19]
-SCREEN2023_COUNTS_COLUMNS: [14, 15, 16, 17, 18, 19]
-
 ### Phenotype calculation parameters
 PSEUDOCOUNT: 10
 NORMALIZE: TRUE
-SCREEN2022_DOUBLINGS: [7.19, 7.73, 5.32, 5.36]
-SCREEN2023_DOUBLINGS: [8.04, 7.98, 5.40, 4.98]
+AVERAGE_REPLICATES: TRUE
 
 ### Correlation filter parameters
 NO_CORRELATION_THRESHOLD: 0.25
+CORRELATION_FILTER_MODE: avg_only  # or "any" or "all"
 
-### Genetic interaction score calculation parameters
-SCREEN2022_GI_SCORES: ["Gamma.OI.R1", "Gamma.OI.R2", "Gamma.OI.Avg", "Tau.OI.R1", "Tau.OI.R2", "Tau.OI.Avg"]
-SCREEN2023_GI_SCORES: ["Gamma.OI.R1", "Gamma.OI.R2", "Gamma.OI.Avg", "Tau.OI.R1", "Tau.OI.R2", "Tau.OI.Avg"]
+###############################################################################
+###############################################################################
 
-### Replicates used for differential score calculation
-DIFFERENTIAL_SCORES: ["OI.R1", "OI.R2", "OI.Avg"]
-HIT_THRESHOLD: 0.995
-DIFFERENTIAL_HIT_THRESHOLD: 1
+# Screen-specific parameters, make sure that variable prefix matches screen 
+# names in SCREENS so that these are mapped correctly.
+
+### Population doublings per (treatment,replicate), used if NORMALIZE is TRUE
+SCREEN2022_DOUBLINGS:
+  DMSO:
+    R1: 7.19
+    R2: 7.73
+  NIRAP:
+    R1: 5.32
+    R2: 5.36
+
+SCREEN2023_DOUBLINGS:
+  DMSO:
+    R1: 8.04
+    R2: 7.98
+  NIRAP:
+    R1: 5.40
+    R2: 4.98
+
+SCREEN2022_PHENOTYPE_PREFIX_MAP:
+  Gamma: [DMSO, T0]
+  Tau: [NIRAP, T0]
+  Rho: [NIRAP, DMSO]
+
+SCREEN2023_PHENOTYPE_PREFIX_MAP:
+  Gamma: [DMSO, T0]
+  Tau: [NIRAP, T0]
+  Rho: [NIRAP, DMSO]
+
+SCREEN2022_COUNT_PREFIXES: [T0, DMSO, NIRAP]
+SCREEN2023_COUNT_PREFIXES: [T0, DMSO, NIRAP]
 
 ### Clustering parameters
-PHENOTYPES_TO_CLUSTER: ["Gamma.OI.Avg", "Tau.OI.Avg", "Nu.OI.Avg"]
+PHENOTYPES_TO_CLUSTER: [Gamma.OI.Avg, Tau.OI.Avg, Nu.OI.Avg]
+
+###############################################################################
+###############################################################################
+################## DANGER ZONE - MODIFY WITH EXTREME CAUTION ##################
+###############################################################################
+###############################################################################
+
+# These parameters control internal workings of the pipeline and should not
+# be modified unless you know what you're doing. These column names are expected
+# and used throughout the codebase. Changing them may lead to unexpected errors.
+
+# If you want to provide your own counts metadata file, ensure it contains at 
+# least these columns.
+
+### Default metadata  columns that are expected to be in counts file
+### These are automatically generated if mode is counts_only
+EXPECTED_META_COLUMNS:
+  - FirstPosition
+  - FirstPseudogene
+  - SecondPosition
+  - SecondPseudogene
+  - ConstructID
+  - GuideCombinationID
+  - PseudogeneCombinationID
+  - PseudogeneCombinationName
+  - Category
+  - Control
+  - Identical
+  - Orientation
