@@ -15,7 +15,6 @@ compute_nt_medians <- function(out, phenotype_prefix_map) {
 
 ### Helper: apply normalization per-phenotype/replicate using doublings mapping
 normalize_phenotypes <- function(out, phenotype_prefix_map, doublings) {
-  nt_medians <- compute_nt_medians(out, phenotype_prefix_map)
   for (ph in names(phenotype_prefix_map)) {
     prefs <- phenotype_prefix_map[[ph]]
     num_pref <- prefs[1]
@@ -24,7 +23,6 @@ normalize_phenotypes <- function(out, phenotype_prefix_map, doublings) {
     rep_cols <- rep_cols[!grepl("\\.Avg$", rep_cols)]
     for (cname in rep_cols) {
       suf <- sub(paste0("^", ph, "\\."), "", cname)
-      nt_val <- nt_medians[[ph]][[suf]]
       if (ph != "Rho") {
         dval <- get_doubling_value(doublings, num_pref, suf)
         if (is.na(dval)) {
@@ -32,7 +30,7 @@ normalize_phenotypes <- function(out, phenotype_prefix_map, doublings) {
                        Sys.time(), num_pref, suf))
         } 
         
-        out[[cname]] <- (out[[cname]] - nt_val) / dval
+        out[[cname]] <- out[[cname]] / dval
         
       } else {
         d_treated <- get_doubling_value(doublings, den_pref, suf)
@@ -41,7 +39,7 @@ normalize_phenotypes <- function(out, phenotype_prefix_map, doublings) {
           stop(sprintf("[%s] Doubling values not found for Rho replicate %s (need %s.%s and %s.%s)", 
                        Sys.time(), suf, den_pref, suf, num_pref, suf))
         }
-        out[[cname]] <- (out[[cname]] - nt_val) / (d_treated - d_basal)
+        out[[cname]] <- out[[cname]] / (d_treated - d_basal)
       }
     }
   }
@@ -284,6 +282,21 @@ calculate_phenotypes <- function(counts, conds, pseudocount = 10, doublings = NU
 
   # combine metadata and computed phenotype columns (preserve original metadata cols)
   out <- cbind(counts[, 1:13], phenos)
+  
+  # Adjust by NT medians (subtract median of NT+NT controls from each phenotype column)
+  message(sprintf("[%s] Adjusting phenotypes by NT medians", Sys.time()))
+  nt_medians <- compute_nt_medians(out, phenotype_prefix_map)
+  for (ph in names(phenotype_prefix_map)) {
+    rep_cols <- grep(paste0("^", ph, "\\."), colnames(out), value = TRUE)
+    rep_cols <- rep_cols[!grepl("\\.Avg$", rep_cols)]
+    for (cname in rep_cols) {
+      suf <- sub(paste0("^", ph, "\\."), "", cname)
+      nt_val <- nt_medians[[ph]][[suf]]
+      out[[cname]] <- out[[cname]] - nt_val
+      message(sprintf("[%s]   %s: NT median = %.4f", Sys.time(), cname, nt_val))
+    }
+  }
+  
   return(out)
 }
 

@@ -5,18 +5,18 @@
 
 ### Output and log directories
 ### All output files and logs will be written to these directories
-OUTPUTS_DIR: ../outputs
-LOGS_DIR: ../logs
+OUTPUTS_DIR: outputs
+LOGS_DIR: logs
 
 ### List of screen names to process end-to-end
-### Expected to exactly match filename prefixes in data/counts/
+### Expected to exactly match counts filename prefixes
 SCREENS: [screen2022, screen2023]
 
 ### Filepath pattern for input counts files
 ### Use {screen} as a placeholder for screen names
 ### Supports both TSV and ZIP files 
 ### ZIP should contain a file ending in _counts.tsv, _counts_only.tsv, or _counts_with_metadata.tsv
-COUNTS_FILEPATH_PATTERN: data/counts/{screen}_raw_counts.zip
+COUNTS_FILEPATH_PATTERN: manuscript_data/counts/{screen}_raw_counts.zip
 
 ###############################################################################
 ###############################################################################
@@ -43,25 +43,25 @@ PHENOTYPE_PREFIX_MAP:
 
 ### Phenotypes to use for genetic interaction score calculation
 ### Must match keys in PHENOTYPE_PREFIX_MAP, but doesn't need to be all of them
-GI_PHENOTYPES: [Gamma, Tau]
+GI_PHENOTYPES: [GAMMA, TAU]
 
 ## Order in which the no correlation filter is applied and to which phenotypes
 ### Must match keys in PHENOTYPE_PREFIX_MAP, but doesn't need to be all of them
 NO_CORRELATION_FILTER:
-  - Gamma
-  - Tau
+  - GAMMA 
+  - TAU
 
 ### Default differential interaction score comparisons
 ### [<FIRST_PHENOTYPE>, <SECOND_PHENOTYPE>] values must match those in GI_PHENOTYPES
 ### Comparisons are calculated as <FIRST_PHENOTYPE> - <SECOND_PHENOTYPE>
 DIFFERENTIAL_COMPARISONS:
-  Nu: [Tau, Gamma]
+  NU: [TAU, GAMMA]
 
 HIT_THRESHOLDS:
-  Gamma: 0.995
-  Tau: 0.995
-  Rho: 0.995
-  Nu: 1
+  GAMMA: 0.995
+  TAU: 0.995
+  RHO: 0.995
+  NU: 1
 
 ###############################################################################
 ###############################################################################
@@ -75,7 +75,7 @@ COMBINATION_SGRNA_COUNT_THRESHOLD: 50
 
 ### Phenotype calculation parameters
 PSEUDOCOUNT: 10
-NORMALIZE: TRUE
+NORMALIZE: TRUE # Normalize phenotypes by population doublings
 AVERAGE_REPLICATES: TRUE
 
 ### Correlation filter parameters
@@ -106,20 +106,20 @@ SCREEN2023_DOUBLINGS:
     R2: 4.98
 
 SCREEN2022_PHENOTYPE_PREFIX_MAP:
-  Gamma: [DMSO, T0]
-  Tau: [NIRAP, T0]
-  Rho: [NIRAP, DMSO]
+  GAMMA: [DMSO, T0]
+  TAU: [NIRAP, T0]
+  RHO: [NIRAP, DMSO]
 
 SCREEN2023_PHENOTYPE_PREFIX_MAP:
-  Gamma: [DMSO, T0]
-  Tau: [NIRAP, T0]
-  Rho: [NIRAP, DMSO]
+  GAMMA: [DMSO, T0]
+  TAU: [NIRAP, T0]
+  RHO: [NIRAP, DMSO]
 
 SCREEN2022_COUNT_PREFIXES: [T0, DMSO, NIRAP]
 SCREEN2023_COUNT_PREFIXES: [T0, DMSO, NIRAP]
 
 ### Clustering parameters
-PHENOTYPES_TO_CLUSTER: [Gamma.OI.Avg, Tau.OI.Avg, Nu.OI.Avg]
+PHENOTYPES_TO_CLUSTER: [GAMMA.OI.Avg, TAU.OI.Avg, NU.OI.Avg]
 
 ###############################################################################
 ###############################################################################
